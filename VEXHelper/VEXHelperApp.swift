@@ -6,12 +6,29 @@
 //
 
 import SwiftUI
+import AVFoundation
 
 @main
 struct VEXHelperApp: App {
+    
+    init() {
+        // 应用启动时配置音频会话
+        setupAudioSession()
+    }
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+        }
+    }
+    
+    private func setupAudioSession() {
+        do {
+            // 设置为 playback 模式，支持后台播放和静音模式下播放
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            print("Failed to set up audio session in App init: \(error)")
         }
     }
 }
