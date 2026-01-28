@@ -2,7 +2,7 @@
 //  SharedData.swift
 //  VEXHelper
 //
-//  Created by VEXHelper Dev on 2026/1/24.
+//  Created by DongZi.8009 on 2026/1/24.
 //
 
 import SwiftUI
@@ -12,10 +12,10 @@ import Combine
 class SharedData: ObservableObject {
     static let shared = SharedData()
     
-    // 计时器设置
+    /// 计时器设置
     @Published var timerSetting: TimerSetting = TimerSetting()
     
-    // 音效设置
+    /// 音效设置
     @Published var soundSetting: SoundSetting = SoundSetting()
     
     private init() {}
@@ -23,12 +23,12 @@ class SharedData: ObservableObject {
 
 /// 计时器配置模型
 struct TimerSetting {
-    // 比赛总时长，默认为60秒
+    /// 比赛总时长，默认为60秒
     var totalTime: Int = 60
 }
 
 /// 音效配置模型
 struct SoundSetting {
-    // 是否启用音效
+    /// 是否启用音效
     var isSoundEnabled: Bool = true
 }

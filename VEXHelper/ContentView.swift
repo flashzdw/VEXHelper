@@ -21,7 +21,7 @@ struct ContentView: View {
                     .transition(.opacity) // 淡入淡出效果
             } else {
                 WelcomeView(startAction: {
-                    withAnimation {
+                    withAnimation(.easeInOut(duration: 0.2)) {
                         showTimerPage = true
                     }
                 })

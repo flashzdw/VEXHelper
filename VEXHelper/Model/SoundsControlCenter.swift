@@ -32,6 +32,11 @@ class SoundsControlCenter: NSObject {
     /// 根据资源名称播放音效
     /// - Parameter soundName: 音频文件名（不含扩展名，默认MP3）
     func updateSoundPlayer(with soundName: String) {
+        // 检查全局音效设置是否开启，如果未开启则直接返回不播放
+        if !SharedData.shared.soundSetting.isSoundEnabled {
+            return
+        }
+
         guard let url = Bundle.main.url(forResource: soundName, withExtension: "MP3") else {
             print("Sound file not found: \(soundName)")
             return

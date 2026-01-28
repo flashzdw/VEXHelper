@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// 横屏模式下的倒计时数字显示组件
 struct HorizontalTimerNumber: View {
     let timeString: String
     
@@ -20,9 +21,79 @@ struct HorizontalTimerNumber: View {
     }
 }
 
+/// 横屏计时器视图
+/// 包含背景、进度条、时间显示和静音按钮
+struct LandscapeTimerView: View {
+    // 计时器引擎
+    @ObservedObject var timerEngine: TimerEngine
+    // 共享数据
+    @ObservedObject var sharedData: SharedData
+    
+    // 颜色定义
+    private let brightBlue = Color.blue
+    private let darkGray = Color("darkGray")
+    
+    var body: some View {
+        ZStack {
+            // 背景 RoundedRectangle (cornerRadius 40, lineWidth 22, color "darkGray", ignores safe area)
+            RoundedRectangle(cornerRadius: 50)
+                .stroke(brightBlue.opacity(0.3), lineWidth: 22)
+                .padding(14)
+                .ignoresSafeArea()
+            
+            // 进度 RoundedRectangle (cornerRadius 50, lineWidth 22, trim, color .blue, ignores safe area)
+            RoundedRectangle(cornerRadius: 50)
+                .trim(from: 0, to: CGFloat(timerEngine.progress))
+                .stroke(brightBlue, style: StrokeStyle(lineWidth: 25, lineCap: .round))
+                .padding(14)
+                .ignoresSafeArea()
+                .animation(.linear(duration: 0.1), value: timerEngine.progress)
+            
+            // 倒计时数字
+            HorizontalTimerNumber(timeString: timerEngine.timeString)
+            
+            // 静音按钮 (旋转90度，位于逻辑左下角)
+            VStack {
+                Spacer()
+                HStack {
+                    muteButton(size: 30)
+                        .rotationEffect(.degrees(90))
+                        .padding(.bottom, 40)
+                        .padding(.leading, 40)
+                    Spacer()
+                }
+            }
+        }
+    }
+    
+    // MARK: - Helper Functions
+    
+    /// 创建静音按钮
+    private func muteButton(size: CGFloat) -> some View {
+        Button(action: {
+            sharedData.soundSetting.isSoundEnabled.toggle()
+            if !sharedData.soundSetting.isSoundEnabled {
+                SoundsControlCenter.shared.stop()
+            }
+        }) {
+            ZStack {
+                Color.clear.frame(width: size * 1.5, height: size * 1.5)
+                Image(systemName: sharedData.soundSetting.isSoundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                    .foregroundColor(.white.opacity(0.7))
+                    .font(.system(size: size))
+                    .transaction(value: sharedData.soundSetting.isSoundEnabled) { $0.animation = nil }
+            }
+            .frame(width: size * 1.5, height: size * 1.5)
+        }
+    }
+}
+
 #Preview {
     ZStack {
-        Color.gray.edgesIgnoringSafeArea(.all)
-        HorizontalTimerNumber(timeString: "1:00")
+        Color.black.edgesIgnoringSafeArea(.all)
+        LandscapeTimerView(
+            timerEngine: TimerEngine(),
+            sharedData: SharedData.shared
+        )
     }
 }
