@@ -93,13 +93,15 @@ struct PortraitTimerView: View {
     }
 }
 
-#Preview {
-    ZStack {
-        Color.black.edgesIgnoringSafeArea(.all)
-        // 预览时注入模拟数据
-        PortraitTimerView(
-            timerEngine: TimerEngine(),
-            sharedData: SharedData.shared
-        )
+struct TimerNumber_Previews: PreviewProvider {
+    static var previews: some View {
+        ZStack {
+            Color.black.edgesIgnoringSafeArea(.all)
+            // 预览时注入模拟数据
+            PortraitTimerView(
+                timerEngine: TimerEngine(),
+                sharedData: SharedData.shared
+            )
+        }
     }
 }

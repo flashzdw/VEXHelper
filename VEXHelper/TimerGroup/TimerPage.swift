@@ -11,7 +11,7 @@ struct TimerPage: View {
     @StateObject var timerCenter = TimerEngine()
     // 监听全局数据变化
     @ObservedObject var sharedData = SharedData.shared
-    @State private var isFullscreen: Bool = false
+    @Binding var isFullscreen: Bool
     
     let darkGray = Color("darkGray")
     let brightBlue = Color.blue
@@ -41,73 +41,75 @@ struct TimerPage: View {
             }
         }
         // 设置状态栏样式
-        .preferredColorScheme(.dark)
+        // .preferredColorScheme(.dark) // 由ContentView控制
     }
     
     // MARK: - Portrait View
     var portraitView: some View {
-        VStack {
-            // 顶部控制栏
-            HStack {
-                Spacer()
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isFullscreen = true
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
+                // 顶部控制栏
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isFullscreen = true
+                        }
+                    }) {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(10)
+                            .background(brightBlue)
+                            .clipShape(Circle())
                     }
-                }) {
-                    Image(systemName: "arrow.up.left.and.arrow.down.right")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(.white)
-                        .padding(10)
-                        .background(brightBlue)
-                        .clipShape(Circle())
+                    .padding(.top, 40)
+                    .padding(.trailing, 20)
                 }
-                .padding(.top, 40)
-                .padding(.trailing, 20)
-            }
-            
-            Spacer()
-            
-            // 倒计时圆环
-            PortraitTimerView(timerEngine: timerCenter, sharedData: sharedData)
-            
-            Spacer()
-            
-            // 底部控制按钮
-            HStack(spacing: 50) {
-                switch timerCenter.status {
-                case .idle:
-                    // 初始状态：显示开始
-                    controlButton(iconName: "play.fill", action: {
-                        timerCenter.start()
-                    })
-                    
-                case .running:
-                    // 运行中：显示暂停（左）和停止（右）
-                    controlButton(iconName: "pause.fill", action: {
-                        timerCenter.pause()
-                    })
-                    controlButton(iconName: "square.fill", action: {
-                        timerCenter.stop()
-                    })
-                    
-                case .paused:
-                    // 暂停：显示重置（左）和继续（右）
-                    controlButton(iconName: "xmark", action: {
-                        timerCenter.reset()
-                    })
-                    controlButton(iconName: "play.fill", action: {
-                        timerCenter.start()
-                    })
-                    
-                case .stopped:
-                    // 停止/结束：显示重置
-                    controlButton(iconName: "arrow.triangle.2.circlepath", action: {
-                        timerCenter.reset()
-                    })
+                
+                Spacer()
+                
+                // 倒计时圆环
+                PortraitTimerView(timerEngine: timerCenter, sharedData: sharedData)
+                
+                Spacer()
+                
+                // 底部控制按钮
+                HStack(spacing: 50) {
+                    switch timerCenter.status {
+                    case .idle:
+                        // 初始状态：显示开始
+                        controlButton(iconName: "play.fill", action: {
+                            timerCenter.start()
+                        })
+                        
+                    case .running:
+                        // 运行中：显示暂停（左）和停止（右）
+                        controlButton(iconName: "pause.fill", action: {
+                            timerCenter.pause()
+                        })
+                        controlButton(iconName: "square.fill", action: {
+                            timerCenter.stop()
+                        })
+                        
+                    case .paused:
+                        // 暂停：显示重置（左）和继续（右）
+                        controlButton(iconName: "xmark", action: {
+                            timerCenter.reset()
+                        })
+                        controlButton(iconName: "play.fill", action: {
+                            timerCenter.start()
+                        })
+                        
+                    case .stopped:
+                        // 停止/结束：显示重置
+                        controlButton(iconName: "arrow.triangle.2.circlepath", action: {
+                            timerCenter.reset()
+                        })
+                    }
                 }
+                .padding(.bottom, 120) // 增加底部边距，给悬浮菜单留空间
             }
-            .padding(.bottom, 60)
         }
     }
     
@@ -195,6 +197,8 @@ struct TimerPage: View {
     }
 }
 
-#Preview {
-    TimerPage()
+struct TimerPage_Previews: PreviewProvider {
+    static var previews: some View {
+        TimerPage(isFullscreen: .constant(false))
+    }
 }

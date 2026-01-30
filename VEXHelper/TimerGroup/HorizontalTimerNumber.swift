@@ -88,12 +88,14 @@ struct LandscapeTimerView: View {
     }
 }
 
-#Preview {
-    ZStack {
-        Color.black.edgesIgnoringSafeArea(.all)
-        LandscapeTimerView(
-            timerEngine: TimerEngine(),
-            sharedData: SharedData.shared
-        )
+struct HorizontalTimerNumber_Previews: PreviewProvider {
+    static var previews: some View {
+        ZStack {
+            Color.black.edgesIgnoringSafeArea(.all)
+            LandscapeTimerView(
+                timerEngine: TimerEngine(),
+                sharedData: SharedData.shared
+            )
+        }
     }
 }
