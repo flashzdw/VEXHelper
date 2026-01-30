@@ -34,46 +34,47 @@ struct SettingsView: View {
                     Spacer()
                 }
                 .padding(.horizontal, 24)
-                .padding(.top, 60)
+                .padding(.top, 40)
                 .padding(.bottom, 10)
                 .zIndex(1) // 确保标题在最上层
                 
                 ZStack(alignment: .top) {
                     // 标准 Form 组件
-                    Form {
-                        Section {
-                            Picker(selection: $appTheme, label: Text("Theme")) {
-                                Text("System").tag("System")
-                                Text("Light").tag("Light")
-                                Text("Dark").tag("Dark")
-                            }
-                        } header: {
-                            Text("Theme")
-                                .foregroundColor(.white.opacity(0.8))
+                Form {
+                    Section {
+                        Picker(selection: $appTheme, label: Text("Theme")) {
+                            Text("System").tag("System")
+                            Text("Light").tag("Light")
+                            Text("Dark").tag("Dark")
                         }
-                        
-                        Section {
-                            Picker(selection: $menuVisibilityMode, label: Text("Menu Visibility")) {
-                                ForEach(MenuVisibilityMode.allCases) { mode in
-                                    Text(mode.localizedName).tag(mode)
-                                }
-                            }
-                        } header: {
-                            Text("Menu Visibility")
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-                        
-                        Section {
-                            Picker(selection: $appLanguage, label: Text("Language")) {
-                                Text("English").tag("en")
-                                Text("Chinese").tag("zh-Hans")
-                            }
-                        } header: {
-                            Text("Language")
-                                .foregroundColor(.white.opacity(0.8))
-                        }
+                    } header: {
+                        Text("Theme")
+                            .foregroundColor(.white.opacity(0.8))
                     }
-                    .scrollContentBackground(.hidden) // 隐藏 Form 默认背景
+                    
+                    Section {
+                        Picker(selection: $menuVisibilityMode, label: Text("Menu Visibility")) {
+                            ForEach(MenuVisibilityMode.allCases) { mode in
+                                Text(LocalizedStringKey(mode.localizedName)).tag(mode)
+                            }
+                        }
+                    } header: {
+                        Text("Menu Visibility")
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                    
+                    Section {
+                        Picker(selection: $appLanguage, label: Text("Language")) {
+                            Text("English").tag("en")
+                            Text("Chinese").tag("zh-Hans")
+                        }
+                    } header: {
+                        Text("Language")
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                }
+                .scrollContentBackground(.hidden) // 隐藏 Form 默认背景
+                .padding(.top, 40) // 增加顶部内边距，避开虚化遮罩
                     
                     // 顶部渐变虚化遮罩
                     Rectangle()
@@ -88,7 +89,7 @@ struct SettingsView: View {
                                 endPoint: .bottom
                             )
                         )
-                        .frame(height: 40)
+                        .frame(height: 60)
                         .allowsHitTesting(false) // 允许点击穿透
                 }
             }

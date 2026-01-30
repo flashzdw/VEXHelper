@@ -7,6 +7,12 @@
 
 import SwiftUI
 
+/// 定义 App 的主 Tab
+enum AppTab {
+    case timer
+    case settings
+}
+
 struct ContentView: View {
     // 引用全局共享数据
     @StateObject var sharedData = SharedData.shared
@@ -23,26 +29,14 @@ struct ContentView: View {
             // 背景层
             Color("darkGray").ignoresSafeArea()
             
-            // 内容层
-            ZStack {
-                // 1. 计时器页面
-                TimerPage(timerCenter: timerEngine, isFullscreen: $isFullscreen)
-                    .environmentObject(sharedData)
-                    .opacity(selectedTab == .timer ? 1 : 0)
-                
-                // 2. 设置页面
-                if selectedTab == .settings {
-                    SettingsView()
-                }
-            }
-            // .animation(.easeInOut(duration: 0.2), value: selectedTab) // 移除 Tab 切换动画
-            
-            // 底部菜单 (悬浮)
-            // 根据设置决定是否显示
-            if shouldShowMenu {
-                BottomMenuView(selectedTab: $selectedTab)
-                    .padding(.bottom, 10)
-            }
+            // 内容层 (使用 MainTabView)
+            MainTabView(
+                sharedData: sharedData,
+                timerEngine: timerEngine,
+                isFullscreen: $isFullscreen,
+                selectedTab: $selectedTab,
+                shouldShowMenu: shouldShowMenu
+            )
         }
         .environment(\.locale, Locale(identifier: appLanguage))
         .preferredColorScheme(colorScheme)

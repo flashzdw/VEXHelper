@@ -19,11 +19,11 @@ enum MenuVisibilityMode: String, CaseIterable, Identifiable {
     var localizedName: String {
         switch self {
         case .duringCounting:
-            return NSLocalizedString("Hide during counting", comment: "Menu visibility mode")
+            return "Hide during counting"
         case .afterStart:
-            return NSLocalizedString("Hide after start", comment: "Menu visibility mode")
+            return "Hide after start"
         case .alwaysShow:
-            return NSLocalizedString("Always show", comment: "Menu visibility mode")
+            return "Always show"
         }
     }
 }
