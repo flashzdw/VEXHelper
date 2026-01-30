@@ -18,7 +18,7 @@ struct ContentView: View {
     @StateObject var sharedData = SharedData.shared
     @AppStorage("appTheme") private var appTheme: String = "System"
     @AppStorage("appLanguage") private var appLanguage: String = "en"
-    @AppStorage("menuVisibilityMode") private var menuVisibilityMode: MenuVisibilityMode = .duringCounting
+    @AppStorage("menuVisibilityMode") private var menuVisibilityMode: MenuVisibilityMode = .afterStart
     
     // 主导航状态
     @State private var selectedTab: AppTab = .timer

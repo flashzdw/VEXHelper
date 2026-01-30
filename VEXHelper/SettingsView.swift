@@ -10,7 +10,7 @@ import SwiftUI
 struct SettingsView: View {
     @AppStorage("appTheme") private var appTheme: String = "System"
     @AppStorage("appLanguage") private var appLanguage: String = "en"
-    @AppStorage("menuVisibilityMode") private var menuVisibilityMode: MenuVisibilityMode = .duringCounting
+    @AppStorage("menuVisibilityMode") private var menuVisibilityMode: MenuVisibilityMode = .afterStart
     
     // 使用与 TimerPage 相同的背景色
     private let darkGray = Color("darkGray")
@@ -65,8 +65,8 @@ struct SettingsView: View {
                     
                     Section {
                         Picker(selection: $appLanguage, label: Text("Language")) {
-                            Text("English").tag("en")
-                            Text("Chinese").tag("zh-Hans")
+                            Text(verbatim: "English").tag("en")
+                            Text(verbatim: "中文").tag("zh-Hans")
                         }
                     } header: {
                         Text("Language")

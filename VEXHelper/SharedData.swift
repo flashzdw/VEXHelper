@@ -39,7 +39,7 @@ class SharedData: ObservableObject {
     @Published var soundSetting: SoundSetting = SoundSetting()
     
     /// 菜单隐藏模式设置 (使用 UserDefaults 持久化)
-    @AppStorage("menuVisibilityMode") var menuVisibilityMode: MenuVisibilityMode = .duringCounting
+    @AppStorage("menuVisibilityMode") var menuVisibilityMode: MenuVisibilityMode = .afterStart
     
     private init() {}
 }

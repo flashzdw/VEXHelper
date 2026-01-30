@@ -111,6 +111,7 @@ struct TimerPage: View {
                 .padding(.bottom, 120) // 增加底部边距，给悬浮菜单留空间
             }
         }
+        .ignoresSafeArea(edges: .bottom) // 防止 TabBar 隐藏时布局跳动
     }
     
     // MARK: - Fullscreen View

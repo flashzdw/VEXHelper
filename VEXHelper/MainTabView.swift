@@ -16,11 +16,17 @@ struct MainTabView: View {
     // 从父视图传递过来的菜单显示状态
     let shouldShowMenu: Bool
     
+    @AppStorage("appTheme") private var appTheme: String = "System"
+    
     var body: some View {
         TabView(selection: $selectedTab) {
             // 1. 计时器页面
             TimerPage(timerCenter: timerEngine, isFullscreen: $isFullscreen)
                 .environmentObject(sharedData)
+                // 将 Toolbar 控制移到子视图内部
+                .toolbar(shouldShowMenu ? .visible : .hidden, for: .tabBar)
+                .toolbarBackground(shouldShowMenu ? .visible : .hidden, for: .tabBar)
+                .toolbarBackground(.ultraThinMaterial, for: .tabBar)
                 .tabItem {
                     Label("Timer", systemImage: "timer")
                 }
@@ -28,20 +34,22 @@ struct MainTabView: View {
             
             // 2. 设置页面
             SettingsView()
+                // 设置页面也应用同样的隐藏逻辑
+                .toolbar(shouldShowMenu ? .visible : .hidden, for: .tabBar)
+                .toolbarBackground(shouldShowMenu ? .visible : .hidden, for: .tabBar)
+                .toolbarBackground(.ultraThinMaterial, for: .tabBar)
                 .tabItem {
                     Label("Settings", systemImage: "gearshape")
                 }
                 .tag(AppTab.settings)
         }
         .accentColor(.blue) // 选中颜色
-        // 控制 TabBar 的背景材质
-        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
-        // 控制 TabBar 背景的显隐
-        .toolbarBackground(shouldShowMenu ? .visible : .hidden, for: .tabBar)
-        // 关键：控制 TabBar 本身的显隐
-        .toolbar(shouldShowMenu ? .visible : .hidden, for: .tabBar)
+        // 禁用 TabBar 显隐动画
+        .animation(nil, value: shouldShowMenu)
         // 确保全屏时 TabBar 不占用空间
         .ignoresSafeArea(edges: isFullscreen ? .bottom : [])
+        // 当主题改变时，强制刷新 TabView
+        .id(appTheme)
     }
 }
 
