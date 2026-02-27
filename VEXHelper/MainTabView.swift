@@ -17,6 +17,7 @@ struct MainTabView: View {
     let shouldShowMenu: Bool
     
     @AppStorage("appTheme") private var appTheme: String = "System"
+    @AppStorage("showRemoteTab") private var showRemoteTab: Bool = false
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -32,8 +33,20 @@ struct MainTabView: View {
                 }
                 .tag(AppTab.timer)
             
-            // 2. 设置页面
-            SettingsView()
+            // 2. 远程控制页面
+            if showRemoteTab {
+                RemoteServerView()
+                    .toolbar(shouldShowMenu ? .visible : .hidden, for: .tabBar)
+                    .toolbarBackground(shouldShowMenu ? .visible : .hidden, for: .tabBar)
+                    .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+                    .tabItem {
+                        Label("Remote Control", systemImage: "network")
+                    }
+                    .tag(AppTab.remote)
+            }
+            
+            // 3. 设置页面
+            SettingsView(timerEngine: timerEngine)
                 // 设置页面也应用同样的隐藏逻辑
                 .toolbar(shouldShowMenu ? .visible : .hidden, for: .tabBar)
                 .toolbarBackground(shouldShowMenu ? .visible : .hidden, for: .tabBar)

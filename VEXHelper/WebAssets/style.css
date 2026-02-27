@@ -1,0 +1,110 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #1c1c1e; /* App Dark Gray */
+    color: white;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+}
+
+/* SVG 环绕进度条 */
+.progress-ring {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1; /* 位于内容下方 */
+    pointer-events: none;
+}
+
+#track {
+    fill: none;
+    stroke: rgba(0, 122, 255, 0.3); /* 半透明蓝色底 */
+    stroke-width: 20;
+}
+
+#indicator {
+    fill: none;
+    stroke: #007AFF; /* 高亮蓝 */
+    stroke-width: 25; /* 比 Track 略宽 */
+    stroke-linecap: round;
+    /* 初始状态：dasharray 将在 JS 中设置 */
+    transition: stroke-dashoffset 0.1s linear;
+}
+
+#overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.85);
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    
+    /* 覆盖在边框之上，或者包含在边框内？通常覆盖整个视口更好 */
+    /* 如果要让 overlay 也在边框内，需要调整。目前全屏覆盖 */
+}
+
+.message {
+    text-align: center;
+}
+
+/* 移除 Glass Panel 容器样式，改为透明布局 */
+.container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.glass-panel {
+    background: transparent;
+    box-shadow: none;
+    border: none;
+    padding: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+/* 极大化时间显示 */
+.timer-display {
+    font-size: 30vw; /* 略微调小以适应边框 */
+    font-weight: 800; /* Bold */
+    font-variant-numeric: tabular-nums; /* 等宽数字 */
+    line-height: 1;
+    margin: 0;
+    text-shadow: none; /* 扁平化风格 */
+    z-index: 2; /* 位于 SVG 上方 */
+}
+
+/* 隐藏不需要的元素 */
+.status-indicator {
+    display: none;
+}
+
+.progress-container {
+    display: none;
+}
+
+/* 媒体查询：针对超宽屏幕限制最大字号 */
+@media (min-aspect-ratio: 2/1) {
+    .timer-display {
+        font-size: 70vh; /* 改为基于高度 */
+    }
+}

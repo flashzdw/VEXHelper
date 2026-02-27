@@ -12,3 +12,26 @@
 "Hide during counting" = "Hide during counting";
 "Hide after start" = "Hide after start";
 "Always show" = "Always show";
+"Remote Control" = "Remote Control";
+"Remote Display Server" = "Remote Display Server";
+"Enable Remote Server" = "Enable Remote Server";
+"Server Status" = "Server Status";
+"IP Address" = "IP Address";
+"Port" = "Port";
+"Connected Clients" = "Connected Clients";
+"Connection" = "Connection";
+"Scan to Connect" = "Scan to Connect";
+"Audio Settings" = "Audio Settings";
+"Remote Audio Only" = "Remote Audio Only";
+"When enabled, sound will play on the connected browser instead of this device." = "When enabled, sound will play on the connected browser instead of this device.";
+"Show Remote Control Tab" = "Show Remote Control Tab";
+"Display" = "Display";
+"Web Controller" = "Web Controller";
+"Enter Control Mode" = "Enter Control Mode";
+"Remote Control Mode" = "Remote Control Mode";
+"Turn your device into a controller and use any browser as a large display." = "Turn your device into a controller and use any browser as a large display.";
+"Big screen display for competitions" = "Big screen display for competitions";
+"Audio plays from the browser" = "Audio plays from the browser";
+"Control everything from your phone" = "Control everything from your phone";
+"Get Started" = "Get Started";
+

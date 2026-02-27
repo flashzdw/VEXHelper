@@ -12,6 +12,8 @@ import AVFoundation
 class SoundsControlCenter: NSObject {
     static let shared = SoundsControlCenter()
     
+    var isRemoteAudioEnabled: Bool = false
+    
     private var audioPlayer: AVAudioPlayer?
     
     private override init() {
@@ -36,7 +38,14 @@ class SoundsControlCenter: NSObject {
         if !SharedData.shared.soundSetting.isSoundEnabled {
             return
         }
-
+        
+        // 远程音频模式：广播指令，本地静音
+        if isRemoteAudioEnabled {
+            let json = "{\"type\": \"playSound\", \"file\": \"\(soundName)\"}"
+            LocalNetworkService.shared.broadcast(message: json)
+            return
+        }
+        
         guard let url = Bundle.main.url(forResource: soundName, withExtension: "MP3") else {
             print("Sound file not found: \(soundName)")
             return

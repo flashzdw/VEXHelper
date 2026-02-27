@@ -10,6 +10,7 @@ import SwiftUI
 /// 定义 App 的主 Tab
 enum AppTab {
     case timer
+    case remote
     case settings
 }
 
@@ -49,6 +50,17 @@ struct ContentView: View {
     // 用于监听计时器状态
     @StateObject private var timerEngine = TimerEngine()
     @State private var timerStatus: TimerStatus = .idle
+    
+    init() {
+        // 配置本地计时器声音
+        let engine = TimerEngine()
+        engine.onPlaySound = { name in
+            DispatchQueue.main.async {
+                SoundsControlCenter.shared.updateSoundPlayer(with: name)
+            }
+        }
+        _timerEngine = StateObject(wrappedValue: engine)
+    }
     
     /// 计算菜单是否应该显示
     private var shouldShowMenu: Bool {

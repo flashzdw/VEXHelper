@@ -12,3 +12,26 @@
 "Hide during counting" = "计时过程中隐藏";
 "Hide after start" = "开始计时后隐藏";
 "Always show" = "不隐藏";
+"Remote Control" = "远程控制";
+"Remote Display Server" = "远程投屏服务器";
+"Enable Remote Server" = "开启远程服务器";
+"Server Status" = "服务器状态";
+"IP Address" = "IP 地址";
+"Port" = "端口";
+"Connected Clients" = "已连接客户端";
+"Connection" = "连接";
+"Scan to Connect" = "扫码连接";
+"Audio Settings" = "音频设置";
+"Remote Audio Only" = "仅远程音频";
+"When enabled, sound will play on the connected browser instead of this device." = "开启后，声音将通过连接的浏览器播放，而非本设备。";
+"Show Remote Control Tab" = "显示远程控制标签页";
+"Display" = "显示";
+"Web Controller" = "Web 控制器";
+"Enter Control Mode" = "进入控制模式";
+"Remote Control Mode" = "远程控制模式";
+"Turn your device into a controller and use any browser as a large display." = "将您的设备变身为控制器，并使用任意浏览器作为大屏显示。";
+"Big screen display for competitions" = "适合比赛的大屏显示";
+"Audio plays from the browser" = "声音由浏览器端播放";
+"Control everything from your phone" = "通过手机完全掌控";
+"Get Started" = "开始使用";
+

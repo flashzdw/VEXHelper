@@ -35,6 +35,14 @@ class TimerEngine: ObservableObject {
     /// 格式化的时间字符串 "m:ss"
     @Published var timeString: String = "1:00"
     
+    // MARK: - Callbacks
+    
+    /// 广播回调：(JSON String) -> Void
+    var onBroadcast: ((String) -> Void)?
+    
+    /// 播放声音回调：(Sound Name) -> Void
+    var onPlaySound: ((String) -> Void)?
+    
     // MARK: - Private Properties
     
     /// 核心计时器 (NSTimer)
@@ -73,9 +81,7 @@ class TimerEngine: ObservableObject {
         status = .running
         
         // 播放开始音效
-        // 优化：将播放声音放在计时器启动之后，确保计时器立即开始，
-        // 而不会因为声音播放的潜在延迟而阻塞计时器的初始化。
-        SoundsControlCenter.shared.updateSoundPlayer(with: "Start")
+        playSound(name: "Start")
     }
     
     /// 暂停计时
@@ -83,7 +89,7 @@ class TimerEngine: ObservableObject {
         guard status == .running else { return }
         
         // 播放暂停音效
-        SoundsControlCenter.shared.updateSoundPlayer(with: "Stop")
+        playSound(name: "Stop")
         
         // 停止计时器
         stopTimer()
@@ -97,7 +103,7 @@ class TimerEngine: ObservableObject {
     /// 停止计时（手动触发）
     func stop() {
         // 播放结束音效
-        SoundsControlCenter.shared.updateSoundPlayer(with: "Over")
+        playSound(name: "Over")
         
         stopTimer()
         status = .stopped
@@ -111,6 +117,7 @@ class TimerEngine: ObservableObject {
         stopTimer()
         status = .idle
         resetTimeData()
+        broadcastState()
     }
     
     // MARK: - Private Methods
@@ -166,6 +173,29 @@ class TimerEngine: ObservableObject {
         
         // 4. 更新上一帧时间记录
         lastTickTimeRemaining = timeRemaining
+        
+        // 5. 广播状态
+        broadcastState()
+    }
+    
+    private func broadcastState() {
+        let statusStr: String
+        switch status {
+        case .running: statusStr = "running"
+        case .paused: statusStr = "paused"
+        case .stopped: statusStr = "stopped"
+        case .idle: statusStr = "idle"
+        }
+        
+        let json = """
+        {
+            "type": "update",
+            "timeString": "\(timeString)",
+            "progress": \(progress),
+            "status": "\(statusStr)"
+        }
+        """
+        onBroadcast?(json)
     }
     
     /// 根据 endTime 和当前时间计算剩余毫秒数
@@ -212,14 +242,7 @@ class TimerEngine: ObservableObject {
     }
     
     private func playSound(name: String) {
-        // 确保在主线程调用（虽然 Timer 已经在主线程，但为了安全）
-        if Thread.isMainThread {
-            SoundsControlCenter.shared.updateSoundPlayer(with: name)
-        } else {
-            DispatchQueue.main.async {
-                SoundsControlCenter.shared.updateSoundPlayer(with: name)
-            }
-        }
+        onPlaySound?(name)
     }
     
     /// 计时结束处理

@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct TimerPage: View {
-    @StateObject var timerCenter = TimerEngine()
+    @ObservedObject var timerCenter: TimerEngine
     // 监听全局数据变化
     @ObservedObject var sharedData = SharedData.shared
     @Binding var isFullscreen: Bool
@@ -200,6 +200,6 @@ struct TimerPage: View {
 
 struct TimerPage_Previews: PreviewProvider {
     static var previews: some View {
-        TimerPage(isFullscreen: .constant(false))
+        TimerPage(timerCenter: TimerEngine(), isFullscreen: .constant(false))
     }
 }
