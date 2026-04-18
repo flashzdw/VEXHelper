@@ -19,7 +19,7 @@ struct ModeSelectionView: View {
             darkGray.ignoresSafeArea()
             
             VStack(spacing: 40) {
-                Text("选择计时模式")
+                Text("Select Timer Mode")
                     .font(.largeTitle.bold())
                     .foregroundColor(.white)
                     .padding(.top, 60)
@@ -28,8 +28,8 @@ struct ModeSelectionView: View {
                 
                 // 手机计时按钮
                 ModeButton(
-                    title: "手机计时",
-                    subtitle: "在手机屏幕上进行计时与控制",
+                    title: "Phone Timer",
+                    subtitle: "Timer and control on the phone screen",
                     icon: "iphone",
                     action: {
                         sharedData.switchToPhoneMode()
@@ -42,7 +42,7 @@ struct ModeSelectionView: View {
                 // Web计时按钮
                 ModeButton(
                     title: "Remote Control",
-                    subtitle: "使用手机控制，浏览器显示大屏计时",
+                    subtitle: "Control with your phone, display on any browser",
                     icon: "network",
                     action: {
                         sharedData.switchToWebMode()

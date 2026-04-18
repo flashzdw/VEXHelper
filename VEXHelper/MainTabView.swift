@@ -83,7 +83,7 @@ struct MainTabView: View {
                 }) {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
-                        Text("模式选择")
+                        Text("Mode Selection")
                     }
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)

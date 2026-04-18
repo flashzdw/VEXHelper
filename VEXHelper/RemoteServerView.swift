@@ -43,7 +43,7 @@ struct RemoteServerView: View {
                                     HStack {
                                         Text("IP Address")
                                         Spacer()
-                                        Text(server.serverIP)
+                                        Text(LocalizedStringKey(server.serverIP))
                                             .foregroundColor(.gray)
                                     }
                                     

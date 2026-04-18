@@ -35,3 +35,16 @@
 "Control everything from your phone" = "通过手机完全掌控";
 "Get Started" = "开始使用";
 
+"Mode Selection" = "模式选择";
+"Select Timer Mode" = "选择计时模式";
+"Phone Timer" = "手机计时";
+"Timer and control on the phone screen" = "在手机屏幕上进行计时与控制";
+"Control with your phone, display on any browser" = "使用手机控制，浏览器显示大屏计时";
+"Open at Launch" = "启动时打开";
+"Startup" = "启动设置";
+"No Wi-Fi Connection" = "未连接 Wi-Fi";
+"Please connect to Wi-Fi or Hotspot" = "请连接 Wi-Fi 或热点";
+"Web Disconnected" = "Web 端已断开";
+"Switch to Phone Timer" = "切换到手机计时";
+"Stay in Web Mode" = "保持在 Web 模式";
+"The Web client has disconnected. Would you like to switch back to phone timer mode?" = "Web 客户端已断开连接。您是否要切换回手机计时模式？";

@@ -40,6 +40,9 @@ class WebRemoteControlManager: ObservableObject {
     /// Web端是否已静音（独立于手机端）
     @Published var isMuted: Bool = false
 
+    /// 是否仅远程播放音频
+    @Published var isRemoteAudioEnabled: Bool = true
+
     /// 切换静音状态
     func toggleMute() {
         isMuted.toggle()
@@ -50,10 +53,22 @@ class WebRemoteControlManager: ObservableObject {
     }
 
     private func handlePlaySound(name: String) {
-        // Web端静音由Web端本地控制，这里只广播声音指令
-        // 广播声音指令到 Web 端
+        // 如果已静音，直接返回，不播放任何声音
+        if isMuted { return }
+
+        // 始终广播声音指令到 Web 端
         let json = "{\"type\": \"playSound\", \"file\": \"\(name)\"}"
         networkService.broadcast(message: json)
+
+        // 决定是否在手机本地播放声音
+        let hasConnectedClients = networkService.connectedClientsCount > 0
+        let shouldPlayLocally = !(isRemoteAudioEnabled && hasConnectedClients)
+
+        if shouldPlayLocally {
+            DispatchQueue.main.async {
+                SoundsControlCenter.shared.updateSoundPlayer(with: name)
+            }
+        }
     }
 
     private func setupLanguageSync() {

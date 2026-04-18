@@ -42,8 +42,8 @@ enum TimerMode: String, CaseIterable, Identifiable {
     
     var localizedName: String {
         switch self {
-        case .phone: return "手机计时"
-        case .web: return "远程控制"
+        case .phone: return "Phone Timer"
+        case .web: return "Remote Control"
         }
     }
 }
@@ -125,7 +125,8 @@ class SharedData: ObservableObject {
         let isMuted: Bool
         switch activeTimerMode {
         case .phone:
-            isMuted = phoneRemoteControlManager.isMuted
+            // 手机模式下，强制 Web 端静音，确保其不发声
+            isMuted = true
         case .web:
             isMuted = webRemoteControlManager.isMuted
         }
@@ -151,15 +152,11 @@ class SharedData: ObservableObject {
 
         switch activeTimerMode {
         case .phone:
-            isMuted = phoneRemoteControlManager.isMuted
-            timeString = phoneTimerEngine.timeString
-            progress = phoneTimerEngine.progress
-            switch phoneTimerEngine.status {
-            case .running: statusStr = "running"
-            case .paused: statusStr = "paused"
-            case .stopped: statusStr = "stopped"
-            case .idle: statusStr = "idle"
-            }
+            // 彻底隔离：手机模式下不向 Web 同步任何真实数据
+            isMuted = true // 强制静音，防止手机模式下网页发声
+            timeString = "--:--" // 显示默认未激活状态
+            progress = 0.0
+            statusStr = "idle"
         case .web:
             isMuted = webRemoteControlManager.isMuted
             timeString = webTimerEngine.timeString

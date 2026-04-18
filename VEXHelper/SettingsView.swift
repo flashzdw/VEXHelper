@@ -71,8 +71,15 @@ struct SettingsView: View {
                             
                             if sharedData.activeTimerMode == .web {
                                 Section {
-                                    Toggle("Remote Audio Only", isOn: $sharedData.phoneRemoteControlManager.isRemoteAudioEnabled)
-                                    Text("When enabled and a browser is connected, sound will play on the browser instead of this device.")
+                                    Toggle("Remote Audio Only", isOn: Binding(
+                                        get: { sharedData.activeTimerMode == .web ? sharedData.webRemoteControlManager.isRemoteAudioEnabled : false },
+                                        set: { newValue in
+                                            if sharedData.activeTimerMode == .web {
+                                                sharedData.webRemoteControlManager.isRemoteAudioEnabled = newValue
+                                            }
+                                        }
+                                    ))
+                                    Text("When enabled, sound will play on the connected browser instead of this device.")
                                         .font(.caption)
                                         .foregroundColor(.gray)
                                 } header: {
