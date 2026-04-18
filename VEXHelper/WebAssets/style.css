@@ -35,8 +35,6 @@ body {
     stroke: #007AFF; /* 高亮蓝 */
     stroke-width: 25; /* 比 Track 略宽 */
     stroke-linecap: round;
-    /* 初始状态：dasharray 将在 JS 中设置 */
-    transition: stroke-dashoffset 0.1s linear;
 }
 
 #overlay {

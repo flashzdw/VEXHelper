@@ -8,22 +8,42 @@
 import SwiftUI
 import Combine
 
-/// 菜单隐藏模式枚举
-enum MenuVisibilityMode: String, CaseIterable, Identifiable {
-    case duringCounting // 计时过程中隐藏（默认）
-    case afterStart     // 开始计时后隐藏（直到重置）
-    case alwaysShow     // 不隐藏（全屏除外）
-    
+/// 计时器状态枚举
+enum TimerStatus {
+    case idle       // 空闲
+    case running    // 运行中
+    case paused     // 暂停
+    case stopped    // 停止
+}
+
+/// 启动应用时打开的模式枚举
+enum LaunchMode: String, CaseIterable, Identifiable {
+    case modeSelection
+    case phoneTimer
+    case webTimer
+
+    var id: String { self.rawValue }
+
+    var localizedName: String {
+        switch self {
+        case .modeSelection: return "Mode Selection"
+        case .phoneTimer: return "Phone Timer"
+        case .webTimer: return "Remote Control"
+        }
+    }
+}
+
+/// 计时模式枚举，用于区分手机计时和Web计时
+enum TimerMode: String, CaseIterable, Identifiable {
+    case phone   // 手机计时模式
+    case web     // Web计时模式
+
     var id: String { self.rawValue }
     
     var localizedName: String {
         switch self {
-        case .duringCounting:
-            return "Hide during counting"
-        case .afterStart:
-            return "Hide after start"
-        case .alwaysShow:
-            return "Always show"
+        case .phone: return "手机计时"
+        case .web: return "远程控制"
         }
     }
 }
@@ -31,17 +51,139 @@ enum MenuVisibilityMode: String, CaseIterable, Identifiable {
 /// 全局共享数据，用于管理应用级设置和状态
 class SharedData: ObservableObject {
     static let shared = SharedData()
-    
-    /// 计时器设置
-    @Published var timerSetting: TimerSetting = TimerSetting()
-    
+
+    // MARK: - Timer Engines
+
+    /// 手机端计时器引擎
+    @Published var phoneTimerEngine: PhoneTimerEngine
+
+    /// Web端计时器引擎
+    @Published var webTimerEngine: WebTimerEngine
+
+    // MARK: - Remote Control Managers
+
+    /// 手机端远程控制管理器
+    @Published var phoneRemoteControlManager: PhoneRemoteControlManager
+
+    /// Web端远程控制管理器
+    @Published var webRemoteControlManager: WebRemoteControlManager
+
+    // MARK: - Timer Mode
+
+    /// 当前激活的计时模式
+    @Published var activeTimerMode: TimerMode = .phone
+
+    // MARK: - Settings
+
+    /// 手机端计时器设置
+    @Published var phoneTimerSetting: TimerSetting = TimerSetting()
+
+    /// Web端计时器设置
+    @Published var webTimerSetting: TimerSetting = TimerSetting()
+
     /// 音效设置
     @Published var soundSetting: SoundSetting = SoundSetting()
-    
-    /// 菜单隐藏模式设置 (使用 UserDefaults 持久化)
-    @AppStorage("menuVisibilityMode") var menuVisibilityMode: MenuVisibilityMode = .afterStart
-    
-    private init() {}
+
+    /// 启动应用时打开的模式设置 (使用 UserDefaults 持久化)
+    @AppStorage("launchMode") var launchMode: LaunchMode = .modeSelection
+
+    private init() {
+        let phoneTimerEngine = PhoneTimerEngine()
+        let webTimerEngine = WebTimerEngine()
+        let networkService = LocalNetworkService.shared
+
+        self.phoneTimerEngine = phoneTimerEngine
+        self.webTimerEngine = webTimerEngine
+        self.phoneRemoteControlManager = PhoneRemoteControlManager(timerEngine: phoneTimerEngine, networkService: networkService)
+        self.webRemoteControlManager = WebRemoteControlManager(timerEngine: webTimerEngine, networkService: networkService)
+        setupNetworkInitialStateSync()
+    }
+
+    // MARK: - Mode Switching
+
+    /// 切换到Web计时模式
+    func switchToWebMode() {
+        // 停止手机计时
+        phoneTimerEngine.reset()
+
+        // 切换到Web模式
+        activeTimerMode = .web
+        syncBrowserMuteForActiveMode()
+    }
+
+    /// 切换到手机计时模式
+    func switchToPhoneMode() {
+        // 停止Web计时
+        webTimerEngine.reset()
+
+        // 切换到手机模式
+        activeTimerMode = .phone
+        syncBrowserMuteForActiveMode()
+    }
+
+    private func syncBrowserMuteForActiveMode() {
+        let isMuted: Bool
+        switch activeTimerMode {
+        case .phone:
+            isMuted = phoneRemoteControlManager.isMuted
+        case .web:
+            isMuted = webRemoteControlManager.isMuted
+        }
+        LocalNetworkService.shared.broadcast(message: "{\"type\": \"toggleMute\", \"muted\": \(isMuted)}")
+    }
+
+    private func setupNetworkInitialStateSync() {
+        LocalNetworkService.shared.onNewConnection = { [weak self] connection in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                self?.syncInitialState(to: connection)
+            }
+        }
+    }
+
+    private func syncInitialState(to connection: WebSocketConnection) {
+        let lang = UserDefaults.standard.string(forKey: "appLanguage") ?? "en"
+        connection.send(string: "{\"type\": \"language\", \"lang\": \"\(lang)\"}")
+
+        let isMuted: Bool
+        let timeString: String
+        let progress: Double
+        let statusStr: String
+
+        switch activeTimerMode {
+        case .phone:
+            isMuted = phoneRemoteControlManager.isMuted
+            timeString = phoneTimerEngine.timeString
+            progress = phoneTimerEngine.progress
+            switch phoneTimerEngine.status {
+            case .running: statusStr = "running"
+            case .paused: statusStr = "paused"
+            case .stopped: statusStr = "stopped"
+            case .idle: statusStr = "idle"
+            }
+        case .web:
+            isMuted = webRemoteControlManager.isMuted
+            timeString = webTimerEngine.timeString
+            progress = webTimerEngine.progress
+            switch webTimerEngine.status {
+            case .running: statusStr = "running"
+            case .paused: statusStr = "paused"
+            case .stopped: statusStr = "stopped"
+            case .idle: statusStr = "idle"
+            }
+        }
+
+        connection.send(string: "{\"type\": \"toggleMute\", \"muted\": \(isMuted)}")
+
+        let json = """
+        {
+            "type": "update",
+            "timeString": "\(timeString)",
+            "progress": \(progress),
+            "status": "\(statusStr)"
+        }
+        """
+        connection.send(string: json)
+    }
 }
 
 /// 计时器配置模型
@@ -54,4 +196,13 @@ struct TimerSetting {
 struct SoundSetting {
     /// 是否启用音效
     var isSoundEnabled: Bool = true
+}
+
+// MARK: - UserDefaults Extension
+
+/// 扩展 UserDefaults 以支持 publisher
+extension UserDefaults {
+    @objc dynamic var appLanguage: String? {
+        return string(forKey: "appLanguage")
+    }
 }

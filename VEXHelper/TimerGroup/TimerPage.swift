@@ -8,12 +8,12 @@
 import SwiftUI
 
 struct TimerPage: View {
-    @ObservedObject var timerCenter: TimerEngine
+    @ObservedObject var timerCenter: PhoneTimerEngine
     // 监听全局数据变化
     @ObservedObject var sharedData = SharedData.shared
     @Binding var isFullscreen: Bool
     
-    let darkGray = Color("darkGray")
+    let darkGray = Color("AppDarkGray")
     let brightBlue = Color.blue
     
     // 部分圆角形状
@@ -30,7 +30,7 @@ struct TimerPage: View {
     var body: some View {
         ZStack {
             // 背景色
-            darkGray.edgesIgnoringSafeArea(.all)
+            darkGray.ignoresSafeArea()
             
             if isFullscreen {
                 // 全屏模式
@@ -63,7 +63,7 @@ struct TimerPage: View {
                             .background(brightBlue)
                             .clipShape(Circle())
                     }
-                    .padding(.top, 40)
+                    .padding(.top, 10) // 与全局返回按钮对齐
                     .padding(.trailing, 20)
                 }
                 
@@ -76,35 +76,9 @@ struct TimerPage: View {
                 
                 // 底部控制按钮
                 HStack(spacing: 50) {
-                    switch timerCenter.status {
-                    case .idle:
-                        // 初始状态：显示开始
-                        controlButton(iconName: "play.fill", action: {
-                            timerCenter.start()
-                        })
-                        
-                    case .running:
-                        // 运行中：显示暂停（左）和停止（右）
-                        controlButton(iconName: "pause.fill", action: {
-                            timerCenter.pause()
-                        })
-                        controlButton(iconName: "square.fill", action: {
-                            timerCenter.stop()
-                        })
-                        
-                    case .paused:
-                        // 暂停：显示重置（左）和继续（右）
-                        controlButton(iconName: "xmark", action: {
-                            timerCenter.reset()
-                        })
-                        controlButton(iconName: "play.fill", action: {
-                            timerCenter.start()
-                        })
-                        
-                    case .stopped:
-                        // 停止/结束：显示重置
-                        controlButton(iconName: "arrow.triangle.2.circlepath", action: {
-                            timerCenter.reset()
+                    ForEach(PhoneTimerControlRules.actions(for: timerCenter.status), id: \.self) { action in
+                        controlButton(iconName: action.iconName, action: {
+                            timerCenter.perform(action)
                         })
                     }
                 }
@@ -148,31 +122,9 @@ struct TimerPage: View {
             HStack {
                 VStack(spacing: 30) {
                     Spacer()
-                    switch timerCenter.status {
-                    case .idle:
-                        controlButton(iconName: "play.fill", rotated: true, action: {
-                            timerCenter.start()
-                        })
-                        
-                    case .running:
-                        controlButton(iconName: "pause.fill", rotated: true, action: {
-                            timerCenter.pause()
-                        })
-                        controlButton(iconName: "square.fill", rotated: true, action: {
-                            timerCenter.stop()
-                        })
-                        
-                    case .paused:
-                        controlButton(iconName: "xmark", rotated: true, action: {
-                            timerCenter.reset()
-                        })
-                        controlButton(iconName: "play.fill", rotated: true, action: {
-                            timerCenter.start()
-                        })
-                        
-                    case .stopped:
-                        controlButton(iconName: "arrow.triangle.2.circlepath", rotated: true, action: {
-                            timerCenter.reset()
+                    ForEach(PhoneTimerControlRules.actions(for: timerCenter.status), id: \.self) { action in
+                        controlButton(iconName: action.iconName, rotated: true, action: {
+                            timerCenter.perform(action)
                         })
                     }
                     Spacer()
@@ -200,6 +152,6 @@ struct TimerPage: View {
 
 struct TimerPage_Previews: PreviewProvider {
     static var previews: some View {
-        TimerPage(timerCenter: TimerEngine(), isFullscreen: .constant(false))
+        TimerPage(timerCenter: SharedData.shared.phoneTimerEngine, isFullscreen: .constant(false))
     }
 }

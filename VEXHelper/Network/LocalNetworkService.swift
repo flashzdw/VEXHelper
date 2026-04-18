@@ -22,6 +22,9 @@ class LocalNetworkService: ObservableObject {
     private var pendingHTTPHandlers: [HTTPConnectionHandler] = []
     private let port: NWEndpoint.Port = 8080
     
+    // Callback for new connections to send initial state
+    var onNewConnection: ((WebSocketConnection) -> Void)?
+    
     private init() {}
     
     func start() {
@@ -84,20 +87,35 @@ class LocalNetworkService: ObservableObject {
     private func handleConnection(_ connection: NWConnection) {
         let handler = HTTPConnectionHandler(connection: connection)
         handler.delegate = self
-        
+
         // Store handler to keep it alive
         DispatchQueue.main.async {
             self.pendingHTTPHandlers.append(handler)
         }
-        
+
+        // 添加 30 秒超时保护，防止内存泄漏
+        var timeoutWorkItem: DispatchWorkItem?
+        timeoutWorkItem = DispatchWorkItem { [weak self, weak handler] in
+            DispatchQueue.main.async {
+                if let handler = handler {
+                    self?.pendingHTTPHandlers.removeAll { $0 === handler }
+                    handler.onFinish?()
+                }
+            }
+        }
+        DispatchQueue.global().asyncAfter(deadline: .now() + 30, execute: timeoutWorkItem!)
+
         handler.onFinish = { [weak self, weak handler] in
+            // 取消超时任务
+            timeoutWorkItem?.cancel()
+
             DispatchQueue.main.async {
                 if let handler = handler {
                     self?.pendingHTTPHandlers.removeAll { $0 === handler }
                 }
             }
         }
-        
+
         handler.start()
     }
     
@@ -129,7 +147,8 @@ class LocalNetworkService: ObservableObject {
                 
                 if addrFamily == UInt8(AF_INET) || addrFamily == UInt8(AF_INET6) {
                     let name = String(cString: interface.ifa_name)
-                    if name == "en0" { // Usually WiFi
+                    // Check for Wi-Fi (en0) or Personal Hotspot (bridge100)
+                    if name == "en0" || name == "bridge100" {
                         var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
                         getnameinfo(interface.ifa_addr, socklen_t(interface.ifa_addr.pointee.sa_len),
                                     &hostname, socklen_t(hostname.count),
@@ -155,11 +174,15 @@ class LocalNetworkService: ObservableObject {
 
 // MARK: - HTTPConnectionDelegate
 extension LocalNetworkService: HTTPConnectionDelegate {
+
     func didUpgradeToWebSocket(connection: WebSocketConnection) {
         print("New WebSocket connection")
         DispatchQueue.main.async {
             self.connectedWebSockets.append(connection)
             self.connectedClientsCount = self.connectedWebSockets.count
+            
+            // Notify listener to send initial state
+            self.onNewConnection?(connection)
             
             // Clean up closed connections
             connection.onClose = { [weak self] id in
@@ -169,8 +192,5 @@ extension LocalNetworkService: HTTPConnectionDelegate {
                 }
             }
         }
-        
-        // Send initial state if needed
-        // connection.send(...)
     }
 }

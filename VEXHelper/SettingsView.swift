@@ -8,17 +8,18 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @ObservedObject var timerEngine: TimerEngine
-    
+    @ObservedObject var timerEngine: PhoneTimerEngine
+    @ObservedObject var sharedData = SharedData.shared
+
     @AppStorage("appTheme") private var appTheme: String = "System"
     @AppStorage("appLanguage") private var appLanguage: String = "en"
-    @AppStorage("menuVisibilityMode") private var menuVisibilityMode: MenuVisibilityMode = .afterStart
     @AppStorage("showRemoteTab") private var showRemoteTab: Bool = false
-    
+    @AppStorage("launchMode") private var launchMode: LaunchMode = .modeSelection
+
     // 使用与 TimerPage 相同的背景色
-    private let darkGray = Color("darkGray")
-    
-    init(timerEngine: TimerEngine) {
+    private let darkGray = Color("AppDarkGray")
+
+    init(timerEngine: PhoneTimerEngine) {
         self.timerEngine = timerEngine
         // 配置 Form 的背景为透明，以便显示底层的 darkGray
         UITableView.appearance().backgroundColor = .clear
@@ -39,7 +40,7 @@ struct SettingsView: View {
                         Spacer()
                     }
                     .padding(.horizontal, 24)
-                    .padding(.top, 40)
+                    .padding(.top, 80) // 增加 top padding 避免与返回按钮重叠
                     .padding(.bottom, 10)
                     .zIndex(1) // 确保标题在最上层
                     
@@ -47,9 +48,13 @@ struct SettingsView: View {
                         // 标准 Form 组件
                         Form {
                             Section {
-                                Toggle("Show Remote Control Tab", isOn: $showRemoteTab)
+                                Picker(selection: $launchMode, label: Text("Open at Launch")) {
+                                    ForEach(LaunchMode.allCases) { mode in
+                                        Text(LocalizedStringKey(mode.localizedName)).tag(mode)
+                                    }
+                                }
                             } header: {
-                                Text("Display")
+                                Text("Startup")
                                     .foregroundColor(.white.opacity(0.8))
                             }
                             
@@ -64,15 +69,16 @@ struct SettingsView: View {
                                     .foregroundColor(.white.opacity(0.8))
                             }
                             
-                            Section {
-                                Picker(selection: $menuVisibilityMode, label: Text("Menu Visibility")) {
-                                    ForEach(MenuVisibilityMode.allCases) { mode in
-                                        Text(LocalizedStringKey(mode.localizedName)).tag(mode)
-                                    }
+                            if sharedData.activeTimerMode == .web {
+                                Section {
+                                    Toggle("Remote Audio Only", isOn: $sharedData.phoneRemoteControlManager.isRemoteAudioEnabled)
+                                    Text("When enabled and a browser is connected, sound will play on the browser instead of this device.")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                } header: {
+                                    Text("Audio Settings")
+                                        .foregroundColor(.white.opacity(0.8))
                                 }
-                            } header: {
-                                Text("Menu Visibility")
-                                    .foregroundColor(.white.opacity(0.8))
                             }
                             
                             Section {
@@ -85,7 +91,7 @@ struct SettingsView: View {
                                     .foregroundColor(.white.opacity(0.8))
                             }
                         }
-                        .scrollContentBackground(.hidden) // 隐藏 Form 默认背景
+                        .modifier(HideFormBackgroundModifier()) // 隐藏 Form 默认背景
                         .padding(.top, 40) // 增加顶部内边距，避开虚化遮罩
                         
                         // 顶部渐变虚化遮罩
@@ -114,6 +120,6 @@ struct SettingsView: View {
 
 struct SettingsView_Previews: PreviewProvider {
     static var previews: some View {
-        SettingsView(timerEngine: TimerEngine())
+        SettingsView(timerEngine: SharedData.shared.phoneTimerEngine)
     }
 }

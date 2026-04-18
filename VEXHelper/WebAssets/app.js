@@ -23,19 +23,40 @@ let currentLang = 'en';
 let isMuted = false;
 
 function updateLanguage(lang) {
-    if (!i18n[lang]) return;
-    currentLang = lang;
+    console.log("updateLanguage:", lang);
+    if (!lang) return;
+    
+    // 模糊匹配：zh-Hans-CN -> zh-Hans
+    let targetLang = lang;
+    if (!i18n[targetLang]) {
+        // 尝试前缀匹配
+        if (lang.startsWith('zh')) targetLang = 'zh-Hans';
+        else if (lang.startsWith('en')) targetLang = 'en';
+    }
+    
+    if (!i18n[targetLang]) {
+        console.warn("Language not found:", lang, "falling back to en");
+        targetLang = 'en';
+    }
+    
+    currentLang = targetLang;
     
     // Update DOM text
-    document.querySelector('h1').innerText = i18n[lang]['title'];
-    document.querySelector('.message p').innerText = i18n[lang]['subtitle'];
+    const titleEl = document.querySelector('h1');
+    if (titleEl) titleEl.innerText = i18n[targetLang]['title'];
+    document.title = i18n[targetLang]['title'];
+    
+    const msgEl = document.querySelector('.message p');
+    if (msgEl) msgEl.innerText = i18n[targetLang]['subtitle'];
     
     // Update status text based on current state
     const statusEl = document.getElementById('status');
-    if (socket && socket.readyState === WebSocket.OPEN) {
-        statusEl.innerText = i18n[lang]['ready'];
-    } else {
-        statusEl.innerText = i18n[lang]['disconnected'];
+    if (statusEl) {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            statusEl.innerText = i18n[targetLang]['ready'];
+        } else {
+            statusEl.innerText = i18n[targetLang]['disconnected'];
+        }
     }
 }
 

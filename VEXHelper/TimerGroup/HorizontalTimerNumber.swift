@@ -18,6 +18,7 @@ struct HorizontalTimerNumber: View {
             .monospacedDigit()
             .rotationEffect(.degrees(90)) // 旋转90度
             .fixedSize() // 确保旋转后布局正确
+            .frame(maxWidth: .infinity, maxHeight: .infinity) // 确保在父视图中居中
     }
 }
 
@@ -25,13 +26,13 @@ struct HorizontalTimerNumber: View {
 /// 包含背景、进度条、时间显示和静音按钮
 struct LandscapeTimerView: View {
     // 计时器引擎
-    @ObservedObject var timerEngine: TimerEngine
+    @ObservedObject var timerEngine: PhoneTimerEngine
     // 共享数据
     @ObservedObject var sharedData: SharedData
     
     // 颜色定义
     private let brightBlue = Color.blue
-    private let darkGray = Color("darkGray")
+    private let darkGray = Color("AppDarkGray")
     
     var body: some View {
         ZStack {
@@ -91,9 +92,9 @@ struct LandscapeTimerView: View {
 struct HorizontalTimerNumber_Previews: PreviewProvider {
     static var previews: some View {
         ZStack {
-            Color.black.edgesIgnoringSafeArea(.all)
+            Color.black.ignoresSafeArea()
             LandscapeTimerView(
-                timerEngine: TimerEngine(),
+                timerEngine: SharedData.shared.phoneTimerEngine,
                 sharedData: SharedData.shared
             )
         }

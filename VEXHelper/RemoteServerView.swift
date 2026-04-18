@@ -10,15 +10,16 @@ import CoreImage.CIFilterBuiltins
 
 struct RemoteServerView: View {
     @ObservedObject private var server = LocalNetworkService.shared
-    @StateObject private var manager = RemoteControlManager()
-    @State private var isServerEnabled = false
-    @State private var isRemoteAudioEnabled = true // 默认开启
+    @ObservedObject private var sharedData = SharedData.shared
     @State private var showControlMode = false
     @AppStorage("hasSeenRemoteIntro") private var hasSeenIntro = false
     @State private var showIntro = false
+
+    /// Web断开连接时弹窗
+    @State private var showWebDisconnectedAlert = false
     
     // 使用与 TimerPage 相同的背景色
-    private let darkGray = Color("darkGray")
+    private let darkGray = Color("AppDarkGray")
     
     let context = CIContext()
     let filter = CIFilter.qrCodeGenerator()
@@ -35,31 +36,10 @@ struct RemoteServerView: View {
                 darkGray.ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // 标题栏
-                    HStack {
-                        Text("Remote Control")
-                            .font(.largeTitle.weight(.bold))
-                            .foregroundColor(.white)
-                        Spacer()
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 40)
-                    .padding(.bottom, 10)
-                    .zIndex(1) // 确保标题在最上层
-                    
                     ZStack(alignment: .top) {
                         Form {
-                            Section(header: Text("Server Status").foregroundColor(.white.opacity(0.8))) {
-                                Toggle("Enable Remote Server", isOn: $isServerEnabled)
-                                    .onChange(of: isServerEnabled) { newValue in
-                                        if newValue {
-                                            server.start()
-                                        } else {
-                                            server.stop()
-                                        }
-                                    }
-                                
-                                if server.isRunning {
+                            if server.isRunning {
+                                Section(header: Text("Server Status").foregroundColor(.white.opacity(0.8))) {
                                     HStack {
                                         Text("IP Address")
                                         Spacer()
@@ -81,11 +61,11 @@ struct RemoteServerView: View {
                                             .foregroundColor(.gray)
                                     }
                                 }
-                            }
-                            
-                            if server.isRunning {
+                                
                                 Section {
                                     Button(action: {
+                                        // 切换到Web计时模式
+                                        sharedData.switchToWebMode()
                                         showControlMode = true
                                     }) {
                                         HStack {
@@ -99,41 +79,44 @@ struct RemoteServerView: View {
                                     .listRowBackground(Color.blue)
                                 }
                                 
-                                Section(header: Text("Connection").foregroundColor(.white.opacity(0.8))) {
-                                    VStack(alignment: .center) {
-                                        if let qrImage = generateQRCode(from: "http://\(server.serverIP):8080") {
-                                            Image(uiImage: qrImage)
-                                                .interpolation(.none)
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(width: 200, height: 200)
+                                // 仅当有有效 IP 时显示连接信息
+                                if server.serverIP != "No Wi-Fi Connection" && server.serverIP != "Unavailable" {
+                                    Section(header: Text("Connection").foregroundColor(.white.opacity(0.8))) {
+                                        VStack(alignment: .center) {
+                                            if let qrImage = generateQRCode(from: "http://\(server.serverIP):8080") {
+                                                Image(uiImage: qrImage)
+                                                    .interpolation(.none)
+                                                    .resizable()
+                                                    .scaledToFit()
+                                                    .frame(width: 200, height: 200)
+                                            }
+                                            
+                                            Text("Scan to Connect")
+                                                .font(.caption)
+                                                .foregroundColor(.gray)
+                                            
+                                            Text("http://\(server.serverIP):8080")
+                                                .font(.system(.body, design: .monospaced))
+                                                .textSelection(.enabled)
+                                                .padding(.top, 5)
                                         }
-                                        
-                                        Text("Scan to Connect")
-                                            .font(.caption)
-                                            .foregroundColor(.gray)
-                                        
-                                        Text("http://\(server.serverIP):8080")
-                                            .font(.system(.body, design: .monospaced))
-                                            .textSelection(.enabled)
-                                            .padding(.top, 5)
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
                                     }
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
-                                }
-                                
-                                Section(header: Text("Audio Settings").foregroundColor(.white.opacity(0.8))) {
-                                    Toggle("Remote Audio Only", isOn: $isRemoteAudioEnabled)
-                                        .onChange(of: isRemoteAudioEnabled) { newValue in
-                                            SoundsControlCenter.shared.isRemoteAudioEnabled = newValue
+                                } else {
+                                    // 无网络提示
+                                    Section {
+                                        HStack {
+                                            Image(systemName: "wifi.slash")
+                                                .foregroundColor(.red)
+                                            Text("Please connect to Wi-Fi or Hotspot")
+                                                .foregroundColor(.gray)
                                         }
-                                    Text("When enabled, sound will play on the connected browser instead of this device.")
-                                        .font(.caption)
-                                        .foregroundColor(.gray)
+                                    }
                                 }
                             }
                         }
-                        .scrollContentBackground(.hidden) // 隐藏 Form 默认背景
+                        .modifier(HideFormBackgroundModifier()) // 隐藏 Form 默认背景
                         .padding(.top, 40) // 增加顶部内边距，避开虚化遮罩
                         
                         // 顶部渐变虚化遮罩
@@ -156,7 +139,26 @@ struct RemoteServerView: View {
             }
             .navigationBarHidden(true)
             .fullScreenCover(isPresented: $showControlMode) {
-                WebControlView(timerEngine: manager.remoteTimerEngine, manager: manager)
+                WebControlView(timerEngine: SharedData.shared.webTimerEngine, manager: SharedData.shared.webRemoteControlManager)
+            }
+            .onChange(of: server.connectedClientsCount) { oldValue, newValue in
+                // 当客户端数量从有变无时（Web断开），弹出提示
+                if oldValue > 0 && newValue == 0 {
+                    // 只有在Web计时模式下才弹出提示
+                    if sharedData.activeTimerMode == .web {
+                        showWebDisconnectedAlert = true
+                    }
+                }
+            }
+            .alert("Web Disconnected", isPresented: $showWebDisconnectedAlert) {
+                Button("Switch to Phone Timer") {
+                    sharedData.switchToPhoneMode()
+                }
+                Button("Stay in Web Mode", role: .cancel) {
+                    // 保持在Web模式但不运行计时
+                }
+            } message: {
+                Text("The Web client has disconnected. Would you like to switch back to phone timer mode?")
             }
             .sheet(isPresented: $showIntro) {
                 introView
@@ -164,13 +166,10 @@ struct RemoteServerView: View {
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onAppear {
-            isServerEnabled = server.isRunning
-            // 同步音频设置
-            isRemoteAudioEnabled = SoundsControlCenter.shared.isRemoteAudioEnabled
-            // 如果默认开启，确保 SoundsControlCenter 状态一致
-            if isRemoteAudioEnabled {
-                SoundsControlCenter.shared.isRemoteAudioEnabled = true
+            if !server.isRunning {
+                server.start()
             }
+            // 同步音频设置 (isRemoteAudioEnabled 已经在 manager 中初始化为 true)
             
             // 首次进入显示介绍
             if !hasSeenIntro {

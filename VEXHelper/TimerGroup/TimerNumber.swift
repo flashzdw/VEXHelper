@@ -26,13 +26,13 @@ struct TimerNumber: View {
 /// 包含进度圆环、时间显示和静音控制
 struct PortraitTimerView: View {
     // 传入的计时器引擎对象
-    @ObservedObject var timerEngine: TimerEngine
+    @ObservedObject var timerEngine: PhoneTimerEngine
     // 共享数据对象，用于控制静音状态
     @ObservedObject var sharedData: SharedData
     
     // 定义颜色常量
     private let brightBlue = Color.blue
-    private let darkGray = Color("darkGray")
+    private let darkGray = Color("AppDarkGray")
     
     var body: some View {
         ZStack {
@@ -96,10 +96,10 @@ struct PortraitTimerView: View {
 struct TimerNumber_Previews: PreviewProvider {
     static var previews: some View {
         ZStack {
-            Color.black.edgesIgnoringSafeArea(.all)
+            Color.black.ignoresSafeArea()
             // 预览时注入模拟数据
             PortraitTimerView(
-                timerEngine: TimerEngine(),
+                timerEngine: SharedData.shared.phoneTimerEngine,
                 sharedData: SharedData.shared
             )
         }

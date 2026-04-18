@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xcodebuild:*)",
+      "Bash(killall:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh repo:*)",
+      "Bash(xcrun simctl:*)",
+      "Bash(open:*)",
+      "Bash(sudo:*)"
+    ]
+  }
+}

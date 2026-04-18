@@ -7,7 +7,7 @@
 
 import Foundation
 import Network
-import CommonCrypto
+import CryptoKit
 
 protocol HTTPConnectionDelegate: AnyObject {
     func didUpgradeToWebSocket(connection: WebSocketConnection)
@@ -36,8 +36,7 @@ class HTTPConnectionHandler {
                 return
             }
             
-            let requestString = String(data: data, encoding: .utf8) ?? ""
-            if requestString.isEmpty {
+            guard let requestString = String(data: data, encoding: .utf8), !requestString.isEmpty else {
                  self.onFinish?()
                  return
             }
@@ -115,6 +114,15 @@ class HTTPConnectionHandler {
         } else if path.hasPrefix("/audio/") {
             // /audio/Start.MP3
             let filename = path.replacingOccurrences(of: "/audio/", with: "")
+
+            // 安全验证：防止路径遍历攻击
+            let dangerousPatterns = ["..", "/", "\\", "\0", "%"]
+            let isDangerous = dangerousPatterns.contains { filename.contains($0) }
+            if isDangerous {
+                sendResponse(status: "400 Bad Request", body: "Invalid filename")
+                return
+            }
+
             let components = filename.components(separatedBy: ".")
             if components.count == 2 {
                 resourceName = components[0]
@@ -179,12 +187,10 @@ class HTTPConnectionHandler {
         let magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
         let combined = key + magic
         let data = combined.data(using: .utf8)!
-        var digest = [UInt8](repeating: 0, count: Int(CC_SHA1_DIGEST_LENGTH))
-        
-        data.withUnsafeBytes {
-            _ = CC_SHA1($0.baseAddress, CC_LONG(data.count), &digest)
-        }
-        
+
+        // 使用 CryptoKit 的 Insecure.SHA1 替代 CommonCrypto
+        let digest = Insecure.SHA1.hash(data: data)
+
         return Data(digest).base64EncodedString()
     }
 }

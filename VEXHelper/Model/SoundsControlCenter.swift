@@ -11,16 +11,18 @@ import AVFoundation
 /// 音频控制中心，负责管理和播放应用内的音效
 class SoundsControlCenter: NSObject {
     static let shared = SoundsControlCenter()
-    
-    var isRemoteAudioEnabled: Bool = false
-    
-    private var audioPlayer: AVAudioPlayer?
-    
+
+    // var isRemoteAudioEnabled: Bool = false // 已弃用，移至 RemoteControlManager
+
+    /// 音频播放器缓存字典（最多缓存 4 个）
+    private var cachedPlayers: [String: AVAudioPlayer] = [:]
+    private let maxCachedPlayers = 4
+
     private override init() {
         super.init()
         setupAudioSession()
     }
-    
+
     /// 配置音频会话，确保后台播放和与其他音频的混合行为
     private func setupAudioSession() {
         do {
@@ -30,7 +32,7 @@ class SoundsControlCenter: NSObject {
             print("Failed to set up audio session: \(error)")
         }
     }
-    
+
     /// 根据资源名称播放音效
     /// - Parameter soundName: 音频文件名（不含扩展名，默认MP3）
     func updateSoundPlayer(with soundName: String) {
@@ -38,30 +40,41 @@ class SoundsControlCenter: NSObject {
         if !SharedData.shared.soundSetting.isSoundEnabled {
             return
         }
-        
-        // 远程音频模式：广播指令，本地静音
-        if isRemoteAudioEnabled {
-            let json = "{\"type\": \"playSound\", \"file\": \"\(soundName)\"}"
-            LocalNetworkService.shared.broadcast(message: json)
+
+        // 复用缓存的播放器
+        if let cachedPlayer = cachedPlayers[soundName] {
+            cachedPlayer.currentTime = 0
+            cachedPlayer.play()
             return
         }
-        
+
         guard let url = Bundle.main.url(forResource: soundName, withExtension: "MP3") else {
             print("Sound file not found: \(soundName)")
             return
         }
-        
+
         do {
-            audioPlayer = try AVAudioPlayer(contentsOf: url)
-            audioPlayer?.prepareToPlay()
-            audioPlayer?.play()
+            let player = try AVAudioPlayer(contentsOf: url)
+            player.prepareToPlay()
+            player.play()
+
+            // 添加到缓存
+            if cachedPlayers.count >= maxCachedPlayers {
+                // 移除最早的缓存
+                if let firstKey = cachedPlayers.keys.first {
+                    cachedPlayers.removeValue(forKey: firstKey)
+                }
+            }
+            cachedPlayers[soundName] = player
         } catch {
             print("Could not create audio player: \(error)")
         }
     }
-    
+
     /// 停止播放
     func stop() {
-        audioPlayer?.stop()
+        for player in cachedPlayers.values {
+            player.stop()
+        }
     }
 }

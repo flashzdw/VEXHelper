@@ -9,12 +9,12 @@ import SwiftUI
 
 /// 专用的 Web 端控制器界面
 struct WebControlView: View {
-    @ObservedObject var timerEngine: TimerEngine
-    @ObservedObject var manager: RemoteControlManager // Add manager
+    @ObservedObject var timerEngine: WebTimerEngine
+    @ObservedObject var manager: WebRemoteControlManager // Add manager
     @Environment(\.presentationMode) var presentationMode
     
     // 复用 TimerPage 的颜色
-    let darkGray = Color("darkGray")
+    let darkGray = Color("AppDarkGray")
     let brightBlue = Color.blue
     
     var body: some View {
@@ -24,16 +24,23 @@ struct WebControlView: View {
             VStack(spacing: 0) {
                 // 顶部导航栏
                 HStack {
-                    Button(action: {
-                        presentationMode.wrappedValue.dismiss()
-                    }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44) // 固定 Frame
-                            .background(Color.white.opacity(0.1))
-                            .clipShape(Circle())
+                    if timerEngine.status == .idle {
+                        Button(action: {
+                            presentationMode.wrappedValue.dismiss()
+                        }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 44, height: 44) // 固定 Frame
+                                .background(Color.white.opacity(0.1))
+                                .clipShape(Circle())
+                        }
+                    } else {
+                        // 占位，保持布局平衡
+                        Spacer()
+                            .frame(width: 44, height: 44)
                     }
+                    
                     Spacer()
                     Text(LocalizedStringKey("Web Controller"))
                         .font(.headline)
@@ -50,7 +57,9 @@ struct WebControlView: View {
                             .frame(width: 44, height: 44) // 固定 Frame
                             .background(manager.isMuted ? Color.red : Color.white.opacity(0.1))
                             .clipShape(Circle())
+                            .transaction { $0.animation = nil } // 强制禁用 Image 切换动画
                     }
+                    // .animation(nil, value: manager.isMuted) // 移除旧的动画禁用方式
                 }
                 .padding(.horizontal)
                 .padding(.top, 20)
@@ -67,31 +76,9 @@ struct WebControlView: View {
                 
                 // 控制按钮组
                 HStack(spacing: 50) {
-                    switch timerEngine.status {
-                    case .idle:
-                        controlButton(iconName: "play.fill", action: {
-                            timerEngine.start()
-                        })
-                        
-                    case .running:
-                        controlButton(iconName: "pause.fill", action: {
-                            timerEngine.pause()
-                        })
-                        controlButton(iconName: "square.fill", action: {
-                            timerEngine.stop()
-                        })
-                        
-                    case .paused:
-                        controlButton(iconName: "xmark", action: {
-                            timerEngine.reset()
-                        })
-                        controlButton(iconName: "play.fill", action: {
-                            timerEngine.start()
-                        })
-                        
-                    case .stopped:
-                        controlButton(iconName: "arrow.triangle.2.circlepath", action: {
-                            timerEngine.reset()
+                    ForEach(WebTimerControlRules.actions(for: timerEngine.status), id: \.self) { action in
+                        controlButton(iconName: action.iconName, action: {
+                            timerEngine.perform(action)
                         })
                     }
                 }
