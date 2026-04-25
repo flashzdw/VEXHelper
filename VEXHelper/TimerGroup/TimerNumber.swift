@@ -24,9 +24,9 @@ struct TimerNumber: View {
 
 /// 竖屏模式下的圆形倒计时视图
 /// 包含进度圆环、时间显示和静音控制
-struct PortraitTimerView: View {
+struct PortraitTimerView<Engine: TimerEngineProtocol>: View {
     // 传入的计时器引擎对象
-    @ObservedObject var timerEngine: PhoneTimerEngine
+    @ObservedObject var timerEngine: Engine
     // 共享数据对象，用于控制静音状态
     @ObservedObject var sharedData: SharedData
     
@@ -71,9 +71,9 @@ struct PortraitTimerView: View {
     private func muteButton(size: CGFloat) -> some View {
         Button(action: {
             // 切换静音设置
-            sharedData.soundSetting.isSoundEnabled.toggle()
+            sharedData.isSoundEnabled.toggle()
             // 如果切换为静音，立即停止当前播放的声音
-            if !sharedData.soundSetting.isSoundEnabled {
+            if !sharedData.isSoundEnabled {
                 SoundsControlCenter.shared.stop()
             }
         }) {
@@ -82,10 +82,10 @@ struct PortraitTimerView: View {
                 Color.clear.frame(width: size * 1.5, height: size * 1.5)
                 
                 // 根据状态显示不同图标
-                Image(systemName: sharedData.soundSetting.isSoundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                Image(systemName: sharedData.isSoundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
                     .foregroundColor(.white.opacity(0.7))
                     .font(.system(size: size))
-                    .transaction(value: sharedData.soundSetting.isSoundEnabled) { $0.animation = nil }
+                    .transaction(value: sharedData.isSoundEnabled) { $0.animation = nil }
             }
             // 强制固定 Frame 防止图标切换时大小变化导致抖动
             .frame(width: size * 1.5, height: size * 1.5)

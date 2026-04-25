@@ -123,12 +123,10 @@ class HTTPConnectionHandler {
                 return
             }
 
-            let components = filename.components(separatedBy: ".")
-            if components.count == 2 {
-                resourceName = components[0]
-                resourceExt = components[1]
-                mimeType = "audio/mpeg"
-            }
+            let nsString = filename as NSString
+            resourceName = nsString.deletingPathExtension
+            resourceExt = nsString.pathExtension
+            mimeType = "audio/mpeg"
         }
         
         if let url = Bundle.main.url(forResource: resourceName, withExtension: resourceExt) {

@@ -1,6 +1,13 @@
+//
+//  TimerControlRules.swift
+//  VEXHelper
+//
+//  Created by VEXHelper Dev on 2026/04/24.
+//
+
 import Foundation
 
-enum WebTimerControlAction: Hashable {
+enum TimerControlAction: Hashable {
     case start
     case pause
     case stop
@@ -8,7 +15,7 @@ enum WebTimerControlAction: Hashable {
     case reset
 }
 
-extension WebTimerControlAction {
+extension TimerControlAction {
     var iconName: String {
         switch self {
         case .start:
@@ -25,8 +32,8 @@ extension WebTimerControlAction {
     }
 }
 
-enum WebTimerControlRules {
-    static func actions(for status: TimerStatus) -> [WebTimerControlAction] {
+enum TimerControlRules {
+    static func actions(for status: TimerStatus) -> [TimerControlAction] {
         switch status {
         case .idle:
             return [.start]
@@ -40,8 +47,8 @@ enum WebTimerControlRules {
     }
 }
 
-extension WebTimerEngine {
-    func perform(_ action: WebTimerControlAction) {
+extension TimerEngineProtocol {
+    func perform(_ action: TimerControlAction) {
         switch action {
         case .start:
             start()

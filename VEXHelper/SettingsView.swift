@@ -13,8 +13,7 @@ struct SettingsView: View {
 
     @AppStorage("appTheme") private var appTheme: String = "System"
     @AppStorage("appLanguage") private var appLanguage: String = "en"
-    @AppStorage("showRemoteTab") private var showRemoteTab: Bool = false
-    @AppStorage("launchMode") private var launchMode: LaunchMode = .modeSelection
+    @AppStorage("launchMode") private var launchMode: LaunchMode = .phoneTimer
 
     // 使用与 TimerPage 相同的背景色
     private let darkGray = Color("AppDarkGray")
@@ -69,16 +68,56 @@ struct SettingsView: View {
                                     .foregroundColor(.white.opacity(0.8))
                             }
                             
+                            Section {
+                                if sharedData.activeTimerMode == .phone {
+                                    Picker(selection: $sharedData.isPhoneCustomTimer, label: Text("Timer Mode")) {
+                                        Text("Default (60s)").tag(false)
+                                        Text("Custom").tag(true)
+                                    }
+                                    
+                                    if sharedData.isPhoneCustomTimer {
+                                        VStack(alignment: .leading, spacing: 8) {
+                                            Text("Duration: \(sharedData.phoneTotalTime) s")
+                                            Slider(
+                                                value: Binding(
+                                                    get: { Double(sharedData.phoneTotalTime) },
+                                                    set: { sharedData.phoneTotalTime = Int($0) }
+                                                ),
+                                                in: 10...120,
+                                                step: 5
+                                            )
+                                        }
+                                        .padding(.vertical, 4)
+                                    }
+                                } else {
+                                    Picker(selection: $sharedData.isWebCustomTimer, label: Text("Timer Mode")) {
+                                        Text("Default (60s)").tag(false)
+                                        Text("Custom").tag(true)
+                                    }
+                                    
+                                    if sharedData.isWebCustomTimer {
+                                        VStack(alignment: .leading, spacing: 8) {
+                                            Text("Duration: \(sharedData.webTotalTime) s")
+                                            Slider(
+                                                value: Binding(
+                                                    get: { Double(sharedData.webTotalTime) },
+                                                    set: { sharedData.webTotalTime = Int($0) }
+                                                ),
+                                                in: 10...120,
+                                                step: 5
+                                            )
+                                        }
+                                        .padding(.vertical, 4)
+                                    }
+                                }
+                            } header: {
+                                Text("Timer Settings")
+                                    .foregroundColor(.white.opacity(0.8))
+                            }
+                            
                             if sharedData.activeTimerMode == .web {
                                 Section {
-                                    Toggle("Remote Audio Only", isOn: Binding(
-                                        get: { sharedData.activeTimerMode == .web ? sharedData.webRemoteControlManager.isRemoteAudioEnabled : false },
-                                        set: { newValue in
-                                            if sharedData.activeTimerMode == .web {
-                                                sharedData.webRemoteControlManager.isRemoteAudioEnabled = newValue
-                                            }
-                                        }
-                                    ))
+                                    Toggle("Remote Audio Only", isOn: $sharedData.webRemoteControlManager.isRemoteAudioEnabled)
                                     Text("When enabled, sound will play on the connected browser instead of this device.")
                                         .font(.caption)
                                         .foregroundColor(.gray)

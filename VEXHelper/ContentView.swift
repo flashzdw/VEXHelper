@@ -16,15 +16,15 @@ enum AppTab {
 
 struct ContentView: View {
     // 引用全局共享数据
-    @StateObject var sharedData = SharedData.shared
+    @ObservedObject var sharedData = SharedData.shared
     @AppStorage("appTheme") private var appTheme: String = "System"
     @AppStorage("appLanguage") private var appLanguage: String = "en"
-    @AppStorage("launchMode") private var launchMode: LaunchMode = .modeSelection
+    @AppStorage("launchMode") private var launchMode: LaunchMode = .phoneTimer
+    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
 
     // 主导航状态
     @State private var selectedTab: AppTab = .timer
     @State private var isFullscreen: Bool = false
-    @State private var hasSelectedMode: Bool = false
     @State private var hasInitializedLaunchMode: Bool = false
 
     // 使用 SharedData 中的 phoneTimerEngine
@@ -37,18 +37,9 @@ struct ContentView: View {
             // 背景层
             Color("AppDarkGray").ignoresSafeArea()
 
-            if !hasSelectedMode {
-                ModeSelectionView(sharedData: sharedData, hasSelectedMode: $hasSelectedMode)
+            if !hasSeenOnboarding {
+                OnboardingView()
                     .transition(.opacity)
-                    .onChange(of: hasSelectedMode) { _, selected in
-                        if selected {
-                            if sharedData.activeTimerMode == .phone {
-                                selectedTab = .timer
-                            } else {
-                                selectedTab = .remote
-                            }
-                        }
-                    }
             } else {
                 // 内容层 (使用 MainTabView)
                 MainTabView(
@@ -56,8 +47,7 @@ struct ContentView: View {
                     phoneTimerEngine: phoneTimerEngine,
                     isFullscreen: $isFullscreen,
                     selectedTab: $selectedTab,
-                    shouldShowMenu: !isFullscreen,
-                    hasSelectedMode: $hasSelectedMode
+                    shouldShowMenu: !isFullscreen
                 )
                 .transition(.opacity)
             }
@@ -68,16 +58,12 @@ struct ContentView: View {
             if !hasInitializedLaunchMode {
                 hasInitializedLaunchMode = true
                 switch launchMode {
-                case .modeSelection:
-                    hasSelectedMode = false
                 case .phoneTimer:
                     sharedData.switchToPhoneMode()
                     selectedTab = .timer
-                    hasSelectedMode = true
                 case .webTimer:
                     sharedData.switchToWebMode()
                     selectedTab = .remote
-                    hasSelectedMode = true
                 }
             }
             updateTabBarAppearance()

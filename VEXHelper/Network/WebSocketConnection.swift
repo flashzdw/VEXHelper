@@ -45,8 +45,8 @@ class WebSocketConnection: Identifiable {
             }
 
             // 使用 dispatch_async 避免递归栈过深
-            DispatchQueue.global().async {
-                self.readMessage()
+            DispatchQueue.global().async { [weak self] in
+                self?.readMessage()
             }
         }
     }
@@ -59,10 +59,10 @@ class WebSocketConnection: Identifiable {
     func send(string: String) {
         guard let data = string.data(using: .utf8) else { return }
         let frame = createFrame(data: data)
-        connection.send(content: frame, completion: .contentProcessed({ error in
+        connection.send(content: frame, completion: .contentProcessed({ [weak self] error in
             if let error = error {
                 print("WS Send error: \(error)")
-                self.stop()
+                self?.stop()
             }
         }))
     }

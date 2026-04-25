@@ -14,9 +14,8 @@ class SoundsControlCenter: NSObject {
 
     // var isRemoteAudioEnabled: Bool = false // 已弃用，移至 RemoteControlManager
 
-    /// 音频播放器缓存字典（最多缓存 4 个）
+    /// 音频播放器缓存字典
     private var cachedPlayers: [String: AVAudioPlayer] = [:]
-    private let maxCachedPlayers = 4
 
     private override init() {
         super.init()
@@ -37,7 +36,7 @@ class SoundsControlCenter: NSObject {
     /// - Parameter soundName: 音频文件名（不含扩展名，默认MP3）
     func updateSoundPlayer(with soundName: String) {
         // 检查全局音效设置是否开启，如果未开启则直接返回不播放
-        if !SharedData.shared.soundSetting.isSoundEnabled {
+        if !SharedData.shared.isSoundEnabled {
             return
         }
 
@@ -59,12 +58,6 @@ class SoundsControlCenter: NSObject {
             player.play()
 
             // 添加到缓存
-            if cachedPlayers.count >= maxCachedPlayers {
-                // 移除最早的缓存
-                if let firstKey = cachedPlayers.keys.first {
-                    cachedPlayers.removeValue(forKey: firstKey)
-                }
-            }
             cachedPlayers[soundName] = player
         } catch {
             print("Could not create audio player: \(error)")

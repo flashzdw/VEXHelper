@@ -24,9 +24,9 @@ struct HorizontalTimerNumber: View {
 
 /// 横屏计时器视图
 /// 包含背景、进度条、时间显示和静音按钮
-struct LandscapeTimerView: View {
+struct LandscapeTimerView<Engine: TimerEngineProtocol>: View {
     // 计时器引擎
-    @ObservedObject var timerEngine: PhoneTimerEngine
+    @ObservedObject var timerEngine: Engine
     // 共享数据
     @ObservedObject var sharedData: SharedData
     
@@ -72,17 +72,17 @@ struct LandscapeTimerView: View {
     /// 创建静音按钮
     private func muteButton(size: CGFloat) -> some View {
         Button(action: {
-            sharedData.soundSetting.isSoundEnabled.toggle()
-            if !sharedData.soundSetting.isSoundEnabled {
+            sharedData.isSoundEnabled.toggle()
+            if !sharedData.isSoundEnabled {
                 SoundsControlCenter.shared.stop()
             }
         }) {
             ZStack {
                 Color.clear.frame(width: size * 1.5, height: size * 1.5)
-                Image(systemName: sharedData.soundSetting.isSoundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                Image(systemName: sharedData.isSoundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
                     .foregroundColor(.white.opacity(0.7))
                     .font(.system(size: size))
-                    .transaction(value: sharedData.soundSetting.isSoundEnabled) { $0.animation = nil }
+                    .transaction(value: sharedData.isSoundEnabled) { $0.animation = nil }
             }
             .frame(width: size * 1.5, height: size * 1.5)
         }

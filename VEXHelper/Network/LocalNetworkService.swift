@@ -31,7 +31,10 @@ class LocalNetworkService: ObservableObject {
         guard !isRunning else { return }
         
         do {
-            let parameters = NWParameters.tcp
+            let tcpOptions = NWProtocolTCP.Options()
+            tcpOptions.noDelay = true // 核心优化：禁用 Nagle 算法，关闭延迟，提高实时性
+            let parameters = NWParameters(tls: nil, tcp: tcpOptions)
+            parameters.allowLocalEndpointReuse = true
             let listener = try NWListener(using: parameters, on: port)
             
             listener.stateUpdateHandler = { [weak self] state in
@@ -75,6 +78,14 @@ class LocalNetworkService: ObservableObject {
         DispatchQueue.main.async {
             self.isRunning = false
             self.connectedClientsCount = 0
+        }
+    }
+    
+    func restart() {
+        stop()
+        // 给系统一点时间释放端口，然后再启动
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.start()
         }
     }
     

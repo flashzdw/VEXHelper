@@ -7,14 +7,17 @@
 
 import SwiftUI
 
-struct TimerPage: View {
-    @ObservedObject var timerCenter: PhoneTimerEngine
+struct TimerPage<Engine: TimerEngineProtocol>: View {
+    @ObservedObject var timerCenter: Engine
     // 监听全局数据变化
     @ObservedObject var sharedData = SharedData.shared
     @Binding var isFullscreen: Bool
     
     let darkGray = Color("AppDarkGray")
     let brightBlue = Color.blue
+    
+    // 增加一个 State 用于控制弹窗
+    @State private var showConnectionAlert = false
     
     // 部分圆角形状
     struct CornerRadiusShape: Shape {
@@ -40,8 +43,13 @@ struct TimerPage: View {
                 portraitView
             }
         }
-        // 设置状态栏样式
-        // .preferredColorScheme(.dark) // 由ContentView控制
+        .alert(isPresented: $showConnectionAlert) {
+            Alert(
+                title: Text("No Connection"),
+                message: Text("There are no connected clients. Please go to the Connection tab to connect a web client first."),
+                dismissButton: .default(Text("OK"))
+            )
+        }
     }
     
     // MARK: - Portrait View
@@ -50,7 +58,27 @@ struct TimerPage: View {
             VStack(spacing: 0) {
                 // 顶部控制栏
                 HStack {
+                    // 左上角：模式切换按钮
+                    Button(action: {
+                        toggleTimerMode()
+                    }) {
+                        HStack {
+                            Image(systemName: sharedData.activeTimerMode == .phone ? "iphone" : "network")
+                            Text(sharedData.activeTimerMode == .phone ? LocalizedStringKey("Phone") : LocalizedStringKey("Remote"))
+                                .font(.system(size: 14, weight: .bold))
+                        }
+                        .foregroundColor(sharedData.activeTimerMode == .phone ? .white : .green)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Color.white.opacity(0.15))
+                        .clipShape(Capsule())
+                    }
+                    .padding(.top, 10)
+                    .padding(.leading, 20)
+                    
                     Spacer()
+                    
+                    // 右上角：全屏按钮
                     Button(action: {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             isFullscreen = true
@@ -76,7 +104,7 @@ struct TimerPage: View {
                 
                 // 底部控制按钮
                 HStack(spacing: 50) {
-                    ForEach(PhoneTimerControlRules.actions(for: timerCenter.status), id: \.self) { action in
+                    ForEach(TimerControlRules.actions(for: timerCenter.status), id: \.self) { action in
                         controlButton(iconName: action.iconName, action: {
                             timerCenter.perform(action)
                         })
@@ -115,6 +143,28 @@ struct TimerPage: View {
                 .padding(.trailing, 28)
                 
                 Spacer()
+                
+                // 横屏模式下的左上角切换按钮（位于屏幕左下角，视觉上旋转90度）
+                HStack {
+                    Button(action: {
+                        toggleTimerMode()
+                    }) {
+                        HStack {
+                            Image(systemName: sharedData.activeTimerMode == .phone ? "iphone" : "network")
+                            Text(sharedData.activeTimerMode == .phone ? LocalizedStringKey("Phone") : LocalizedStringKey("Remote"))
+                                .font(.system(size: 14, weight: .bold))
+                        }
+                        .foregroundColor(sharedData.activeTimerMode == .phone ? .white : .green)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Color.white.opacity(0.15))
+                        .clipShape(Capsule())
+                        .rotationEffect(.degrees(90))
+                    }
+                    .padding(.bottom, 40)
+                    .padding(.leading, 20)
+                    Spacer()
+                }
             }
             .ignoresSafeArea()
             
@@ -122,7 +172,7 @@ struct TimerPage: View {
             HStack {
                 VStack(spacing: 30) {
                     Spacer()
-                    ForEach(PhoneTimerControlRules.actions(for: timerCenter.status), id: \.self) { action in
+                    ForEach(TimerControlRules.actions(for: timerCenter.status), id: \.self) { action in
                         controlButton(iconName: action.iconName, rotated: true, action: {
                             timerCenter.perform(action)
                         })
@@ -146,6 +196,26 @@ struct TimerPage: View {
                 .frame(width: 60, height: 60)
                 .background(brightBlue)
                 .clipShape(Circle())
+        }
+    }
+    
+    // 切换计时模式逻辑
+    private func toggleTimerMode() {
+        if sharedData.activeTimerMode == .phone {
+            // 试图切换到远程模式
+            if LocalNetworkService.shared.connectedClientsCount > 0 {
+                withAnimation {
+                    sharedData.switchToWebMode()
+                }
+            } else {
+                // 没有连接的客户端，提示用户
+                showConnectionAlert = true
+            }
+        } else {
+            // 切换回手机模式
+            withAnimation {
+                sharedData.switchToPhoneMode()
+            }
         }
     }
 }

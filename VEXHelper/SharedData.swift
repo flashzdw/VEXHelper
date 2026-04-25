@@ -18,7 +18,6 @@ enum TimerStatus {
 
 /// 启动应用时打开的模式枚举
 enum LaunchMode: String, CaseIterable, Identifiable {
-    case modeSelection
     case phoneTimer
     case webTimer
 
@@ -26,7 +25,6 @@ enum LaunchMode: String, CaseIterable, Identifiable {
 
     var localizedName: String {
         switch self {
-        case .modeSelection: return "Mode Selection"
         case .phoneTimer: return "Phone Timer"
         case .webTimer: return "Remote Control"
         }
@@ -75,19 +73,52 @@ class SharedData: ObservableObject {
 
     // MARK: - Settings
 
-    /// 手机端计时器设置
-    @Published var phoneTimerSetting: TimerSetting = TimerSetting()
+    /// 是否使用自定义计时器 (默认: 否)
+    @Published var isPhoneCustomTimer: Bool {
+        didSet { 
+            UserDefaults.standard.set(isPhoneCustomTimer, forKey: "isPhoneCustomTimer") 
+            phoneTimerEngine.updateIsCustom(isPhoneCustomTimer)
+        }
+    }
 
-    /// Web端计时器设置
-    @Published var webTimerSetting: TimerSetting = TimerSetting()
+    @Published var isWebCustomTimer: Bool {
+        didSet { 
+            UserDefaults.standard.set(isWebCustomTimer, forKey: "isWebCustomTimer") 
+            webTimerEngine.updateIsCustom(isWebCustomTimer)
+        }
+    }
 
-    /// 音效设置
-    @Published var soundSetting: SoundSetting = SoundSetting()
+    /// 手机端计时器比赛总时长 (秒)
+    @Published var phoneTotalTime: Int {
+        didSet { 
+            UserDefaults.standard.set(phoneTotalTime, forKey: "phoneTotalTime") 
+            phoneTimerEngine.updateTotalTime(phoneTotalTime)
+        }
+    }
+
+    /// Web端计时器比赛总时长 (秒)
+    @Published var webTotalTime: Int {
+        didSet { 
+            UserDefaults.standard.set(webTotalTime, forKey: "webTotalTime") 
+            webTimerEngine.updateTotalTime(webTotalTime)
+        }
+    }
+
+    /// 是否启用音效
+    @Published var isSoundEnabled: Bool {
+        didSet { UserDefaults.standard.set(isSoundEnabled, forKey: "isSoundEnabled") }
+    }
 
     /// 启动应用时打开的模式设置 (使用 UserDefaults 持久化)
-    @AppStorage("launchMode") var launchMode: LaunchMode = .modeSelection
+    @AppStorage("launchMode") var launchMode: LaunchMode = .phoneTimer
 
     private init() {
+        self.phoneTotalTime = UserDefaults.standard.object(forKey: "phoneTotalTime") as? Int ?? 60
+        self.webTotalTime = UserDefaults.standard.object(forKey: "webTotalTime") as? Int ?? 60
+        self.isPhoneCustomTimer = UserDefaults.standard.object(forKey: "isPhoneCustomTimer") as? Bool ?? false
+        self.isWebCustomTimer = UserDefaults.standard.object(forKey: "isWebCustomTimer") as? Bool ?? false
+        self.isSoundEnabled = UserDefaults.standard.object(forKey: "isSoundEnabled") as? Bool ?? true
+
         let phoneTimerEngine = PhoneTimerEngine()
         let webTimerEngine = WebTimerEngine()
         let networkService = LocalNetworkService.shared
@@ -181,18 +212,6 @@ class SharedData: ObservableObject {
         """
         connection.send(string: json)
     }
-}
-
-/// 计时器配置模型
-struct TimerSetting {
-    /// 比赛总时长，默认为60秒
-    var totalTime: Int = 60
-}
-
-/// 音效配置模型
-struct SoundSetting {
-    /// 是否启用音效
-    var isSoundEnabled: Bool = true
 }
 
 // MARK: - UserDefaults Extension

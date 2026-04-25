@@ -10,22 +10,22 @@ import Combine
 
 /// 手机端计时器引擎，负责手机端的核心计时逻辑
 /// 与 WebTimerEngine 完全独立，拥有自己的状态
-class PhoneTimerEngine: ObservableObject {
+class PhoneTimerEngine: ObservableObject, TimerEngineProtocol {
 
     // MARK: - Published Properties
 
     /// 当前计时器状态
-    @Published var status: TimerStatus = .idle
+    @Published var status: TimerStatus
 
-    /// 剩余时间（毫秒），默认 60000ms (1分钟)
+    /// 剩余时间（毫秒）
     /// 确保在主线程更新以保证 UI 响应流畅
-    @Published var timeRemaining: Int = 60000
+    @Published var timeRemaining: Int
 
     /// 进度 (0.0 - 1.0)，用于进度条显示
-    @Published var progress: Double = 1.0
+    @Published var progress: Double
 
     /// 格式化的时间字符串 "m:ss"
-    @Published var timeString: String = "1:00"
+    @Published var timeString: String
 
     // MARK: - Callbacks
 
@@ -43,22 +43,65 @@ class PhoneTimerEngine: ObservableObject {
     /// 目标结束时间，用于精确计算剩余时长
     private var endTime: Date?
 
-    /// 总时间常量 (60秒 = 60000毫秒)
-    private let totalTime: Int = 60000
+    /// 总时间常量 (毫秒)
+    private var totalTime: Int
 
     /// 上一次 tick 的剩余时间，用于检测声音触发阈值（防止跳帧错过）
-    private var lastTickTimeRemaining: Int = 60000
+    private var lastTickTimeRemaining: Int
 
     /// 上一次广播的状态缓存，用于优化广播频率
     private var lastBroadcastStatus: String = ""
 
+    /// 是否使用自定义计时器 (屏蔽中间音效)
+    private var isCustomTimer: Bool
+
     // MARK: - Initialization
 
     init() {
+        let isCustom = UserDefaults.standard.object(forKey: "isPhoneCustomTimer") as? Bool ?? false
+        self.isCustomTimer = isCustom
+        
+        let initialTime: Int
+        if isCustom {
+            initialTime = (UserDefaults.standard.object(forKey: "phoneTotalTime") as? Int ?? 60) * 1000
+        } else {
+            initialTime = 60 * 1000
+        }
+        
+        self.totalTime = initialTime
+        self.timeRemaining = initialTime
+        self.lastTickTimeRemaining = initialTime
+        self.status = .idle
+        self.progress = 1.0
+        self.timeString = ""
+        self.lastBroadcastStatus = ""
         updateTimeString()
     }
 
+    deinit {
+        timer?.invalidate()
+    }
+
     // MARK: - Public Methods
+
+    /// 更新是否为自定义模式，如果是默认模式则强制设为 60s
+    func updateIsCustom(_ isCustom: Bool) {
+        self.isCustomTimer = isCustom
+        if !isCustom {
+            updateTotalTime(60)
+        } else {
+            let customTime = UserDefaults.standard.object(forKey: "phoneTotalTime") as? Int ?? 60
+            updateTotalTime(customTime)
+        }
+    }
+
+    /// 更新总时间配置
+    func updateTotalTime(_ seconds: Int) {
+        self.totalTime = seconds * 1000
+        if status == .idle {
+            resetTimeData()
+        }
+    }
 
     /// 开始或继续计时
     func start() {
@@ -252,6 +295,9 @@ class PhoneTimerEngine: ObservableObject {
 
     /// 检查并在特定时间点触发音效
     private func checkSoundTriggers() {
+        // 如果是自定义模式，跳过中间提示音
+        if isCustomTimer { return }
+
         // 使用区间判断：上一帧时间 > 阈值 && 当前时间 <= 阈值
 
         // 35秒触发点 (35000ms)
