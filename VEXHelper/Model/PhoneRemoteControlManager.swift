@@ -74,7 +74,7 @@ class PhoneRemoteControlManager: ObservableObject {
     private func syncInitialState(to connection: WebSocketConnection) {
         // 1. Language
         let lang = UserDefaults.standard.string(forKey: "appLanguage") ?? "en"
-        connection.send(string: "{\"type\": \"language\", \"lang\": \"\(lang)\"}")
+        connection.send(string: TimerMessageFactory.language(lang: lang))
         
         // 手机模式下不再同步计时器和静音状态到 Web
     }
@@ -82,7 +82,6 @@ class PhoneRemoteControlManager: ObservableObject {
     /// 同步当前语言到 Web 端
     func syncLanguage() {
         let lang = UserDefaults.standard.string(forKey: "appLanguage") ?? "en"
-        let json = "{\"type\": \"language\", \"lang\": \"\(lang)\"}"
-        networkService.broadcast(message: json)
+        networkService.broadcast(message: TimerMessageFactory.language(lang: lang))
     }
 }

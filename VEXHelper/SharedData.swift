@@ -161,7 +161,7 @@ class SharedData: ObservableObject {
         case .web:
             isMuted = webRemoteControlManager.isMuted
         }
-        LocalNetworkService.shared.broadcast(message: "{\"type\": \"toggleMute\", \"muted\": \(isMuted)}")
+        LocalNetworkService.shared.broadcast(message: TimerMessageFactory.toggleMute(isMuted: isMuted))
     }
 
     private func setupNetworkInitialStateSync() {
@@ -174,43 +174,28 @@ class SharedData: ObservableObject {
 
     private func syncInitialState(to connection: WebSocketConnection) {
         let lang = UserDefaults.standard.string(forKey: "appLanguage") ?? "en"
-        connection.send(string: "{\"type\": \"language\", \"lang\": \"\(lang)\"}")
+        connection.send(string: TimerMessageFactory.language(lang: lang))
 
         let isMuted: Bool
-        let timeString: String
-        let progress: Double
-        let statusStr: String
+        let snapshot: TimerSnapshot
 
         switch activeTimerMode {
         case .phone:
             // 彻底隔离：手机模式下不向 Web 同步任何真实数据
             isMuted = true // 强制静音，防止手机模式下网页发声
-            timeString = "--:--" // 显示默认未激活状态
-            progress = 0.0
-            statusStr = "idle"
+            snapshot = TimerSnapshot(timeRemaining: 0, timeString: "--:--", progress: 0.0, status: .idle)
         case .web:
             isMuted = webRemoteControlManager.isMuted
-            timeString = webTimerEngine.timeString
-            progress = webTimerEngine.progress
-            switch webTimerEngine.status {
-            case .running: statusStr = "running"
-            case .paused: statusStr = "paused"
-            case .stopped: statusStr = "stopped"
-            case .idle: statusStr = "idle"
-            }
+            snapshot = TimerSnapshot(
+                timeRemaining: webTimerEngine.timeRemaining,
+                timeString: webTimerEngine.timeString,
+                progress: webTimerEngine.progress,
+                status: webTimerEngine.status
+            )
         }
 
-        connection.send(string: "{\"type\": \"toggleMute\", \"muted\": \(isMuted)}")
-
-        let json = """
-        {
-            "type": "update",
-            "timeString": "\(timeString)",
-            "progress": \(progress),
-            "status": "\(statusStr)"
-        }
-        """
-        connection.send(string: json)
+        connection.send(string: TimerMessageFactory.toggleMute(isMuted: isMuted))
+        connection.send(string: TimerMessageFactory.update(snapshot: snapshot))
     }
 }
 

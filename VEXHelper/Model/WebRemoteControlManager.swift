@@ -48,8 +48,7 @@ class WebRemoteControlManager: ObservableObject {
         isMuted.toggle()
 
         // 发送静音指令到 Web 端
-        let json = "{\"type\": \"toggleMute\", \"muted\": \(isMuted)}"
-        networkService.broadcast(message: json)
+        networkService.broadcast(message: TimerMessageFactory.toggleMute(isMuted: isMuted))
     }
 
     private func handlePlaySound(name: String) {
@@ -57,8 +56,7 @@ class WebRemoteControlManager: ObservableObject {
         if isMuted { return }
 
         // 始终广播声音指令到 Web 端
-        let json = "{\"type\": \"playSound\", \"file\": \"\(name)\"}"
-        networkService.broadcast(message: json)
+        networkService.broadcast(message: TimerMessageFactory.playSound(name: name))
 
         // 决定是否在手机本地播放声音
         let hasConnectedClients = networkService.connectedClientsCount > 0
@@ -85,39 +83,27 @@ class WebRemoteControlManager: ObservableObject {
     private func syncInitialState(to connection: WebSocketConnection) {
         // 1. Language
         let lang = UserDefaults.standard.string(forKey: "appLanguage") ?? "en"
-        connection.send(string: "{\"type\": \"language\", \"lang\": \"\(lang)\"}")
+        connection.send(string: TimerMessageFactory.language(lang: lang))
 
         // 2. Mute State
-        connection.send(string: "{\"type\": \"toggleMute\", \"muted\": \(isMuted)}")
+        connection.send(string: TimerMessageFactory.toggleMute(isMuted: isMuted))
 
         // 3. Timer State
-        let statusStr: String
-        switch webTimerEngine.status {
-        case .running: statusStr = "running"
-        case .paused: statusStr = "paused"
-        case .stopped: statusStr = "stopped"
-        case .idle: statusStr = "idle"
-        }
-
-        let json = """
-        {
-            "type": "update",
-            "timeString": "\(webTimerEngine.timeString)",
-            "progress": \(webTimerEngine.progress),
-            "status": "\(statusStr)"
-        }
-        """
-        connection.send(string: json)
+        let snapshot = TimerSnapshot(
+            timeRemaining: webTimerEngine.timeRemaining,
+            timeString: webTimerEngine.timeString,
+            progress: webTimerEngine.progress,
+            status: webTimerEngine.status
+        )
+        connection.send(string: TimerMessageFactory.update(snapshot: snapshot))
     }
 
     /// 同步当前语言到 Web 端
     func syncLanguage() {
         let lang = UserDefaults.standard.string(forKey: "appLanguage") ?? "en"
-        let json = "{\"type\": \"language\", \"lang\": \"\(lang)\"}"
-        networkService.broadcast(message: json)
+        networkService.broadcast(message: TimerMessageFactory.language(lang: lang))
 
         // 同时同步静音状态
-        let muteJson = "{\"type\": \"toggleMute\", \"muted\": \(isMuted)}"
-        networkService.broadcast(message: muteJson)
+        networkService.broadcast(message: TimerMessageFactory.toggleMute(isMuted: isMuted))
     }
 }

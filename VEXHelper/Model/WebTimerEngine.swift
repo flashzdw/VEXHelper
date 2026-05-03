@@ -10,7 +10,7 @@ import Combine
 
 /// Web端计时器引擎，负责Web端的计时逻辑
 /// 与 PhoneTimerEngine 完全独立，拥有自己的状态
-class WebTimerEngine: ObservableObject, TimerEngineProtocol {
+class WebTimerEngine: ObservableObject, TimerEngineProtocol, CountdownTimerDelegate {
 
     // MARK: - Published Properties
 
@@ -36,60 +36,35 @@ class WebTimerEngine: ObservableObject, TimerEngineProtocol {
 
     // MARK: - Private Properties
 
-    /// 核心计时器 (NSTimer)
-    private var timer: Timer?
-
-    /// 目标结束时间，用于精确计算剩余时长
-    private var endTime: Date?
-
-    /// 总时间常量 (毫秒)
-    private var totalTime: Int
-
-    /// 上一次 tick 的剩余时间，用于检测声音触发阈值（防止跳帧错过）
-    private var lastTickTimeRemaining: Int
-
+    private var core: CountdownTimerCore!
+    
     /// 上一次广播的状态缓存，用于优化广播频率
     private var lastBroadcastStatus: String = ""
 
     /// 上一次广播的时间戳，用于节流 (Throttling)
     private var lastBroadcastTime: TimeInterval = 0
 
-    /// 是否使用自定义计时器 (屏蔽中间音效)
-    private var isCustomTimer: Bool
-
     // MARK: - Initialization
 
     init() {
         let isCustom = UserDefaults.standard.object(forKey: "isWebCustomTimer") as? Bool ?? false
-        self.isCustomTimer = isCustom
+        let initialTime: Int = (isCustom ? (UserDefaults.standard.object(forKey: "webTotalTime") as? Int ?? 60) : 60) * 1000
         
-        let initialTime: Int
-        if isCustom {
-            initialTime = (UserDefaults.standard.object(forKey: "webTotalTime") as? Int ?? 60) * 1000
-        } else {
-            initialTime = 60 * 1000
-        }
-        
-        self.totalTime = initialTime
-        self.timeRemaining = initialTime
-        self.lastTickTimeRemaining = initialTime
         self.status = .idle
+        self.timeRemaining = initialTime
         self.progress = 1.0
-        self.timeString = ""
-        self.lastBroadcastStatus = ""
+        self.timeString = CountdownTimerCore.formatTimeString(timeRemaining: initialTime)
         self.lastBroadcastTime = 0
-        updateTimeString()
-    }
-
-    deinit {
-        timer?.invalidate()
+        
+        self.core = CountdownTimerCore(totalTime: initialTime, isCustomTimer: isCustom)
+        self.core.delegate = self
     }
 
     // MARK: - Public Methods
 
     /// 更新是否为自定义模式，如果是默认模式则强制设为 60s
     func updateIsCustom(_ isCustom: Bool) {
-        self.isCustomTimer = isCustom
+        core.isCustomTimer = isCustom
         if !isCustom {
             updateTotalTime(60)
         } else {
@@ -100,153 +75,49 @@ class WebTimerEngine: ObservableObject, TimerEngineProtocol {
 
     /// 更新总时间配置
     func updateTotalTime(_ seconds: Int) {
-        self.totalTime = seconds * 1000
-        if status == .idle {
-            resetTimeData()
-        }
+        core.totalTime = seconds * 1000
     }
 
     /// 开始或继续计时
     func start() {
-        if status == .running { return }
-
-        if status == .paused {
-            // 从暂停状态恢复：基于当前剩余时间重新计算 endTime
-            startTimer(resuming: true)
-        } else {
-            // 新的开始：重置所有数据
-            resetTimeData()
-            startTimer(resuming: false)
-        }
-
-        status = .running
-
-        // 播放开始音效
-        playSound(name: "Start")
+        core.start()
     }
 
     /// 暂停计时
     func pause() {
-        guard status == .running else { return }
-
-        // 播放暂停音效
-        playSound(name: "Stop")
-
-        // 停止计时器
-        stopTimer()
-
-        // 最后更新一次时间，确保暂停时显示的数据是准确的
-        updateTimeRemainingFromDate()
-
-        status = .paused
+        core.pause()
     }
 
     /// 停止计时（手动触发）
     func stop() {
-        // 播放结束音效
-        playSound(name: "Over")
-
-        stopTimer()
-        status = .stopped
+        core.stop()
     }
 
     /// 重置计时器
     func reset() {
-        stopAndReset()
-        status = .idle
-        resetTimeData()
-        broadcastState()
+        core.reset()
+    }
+    
+    // MARK: - CountdownTimerDelegate
+    
+    func timerDidUpdateSnapshot(_ snapshot: TimerSnapshot) {
+        self.status = snapshot.status
+        self.timeRemaining = snapshot.timeRemaining
+        self.progress = snapshot.progress
+        self.timeString = snapshot.timeString
+        
+        broadcastState(snapshot: snapshot)
+    }
+    
+    func timerDidTriggerSound(_ soundName: String) {
+        onPlaySound?(soundName)
     }
 
     // MARK: - Private Methods
 
-    /// 启动计时器逻辑
-    /// - Parameter resuming: 是否是从暂停恢复（影响 endTime 的计算基准）
-    private func startTimer(resuming: Bool) {
-        // 清理旧的 timer
-        invalidateTimer()
-
-        // 计算 endTime
-        let now = Date()
-        let duration = TimeInterval(timeRemaining) / 1000.0
-        endTime = now.addingTimeInterval(duration)
-
-        // 记录启动时的剩余时间
-        lastTickTimeRemaining = timeRemaining
-
-        // 创建 Timer，间隔设为 0.1s (10 FPS) 以减少 CPU 消耗
-        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            self?.tick()
-        }
-
-        // 将 Timer 加入 Common 模式，防止 ScrollView 滚动时计时停止
-        if let timer = timer {
-            RunLoop.main.add(timer, forMode: .common)
-        }
-    }
-
-    /// 仅停止计时器实例，不修改时间数据
-    private func invalidateTimer() {
-        timer?.invalidate()
-        timer = nil
-    }
-
-    /// 停止计时器并重置（归零）
-    private func stopAndReset() {
-        invalidateTimer()
-
-        status = .stopped
-
-        // 强制归零
-        timeRemaining = 0
-        timeString = "0:00"
-        progress = 0
-
-        // 广播状态
-        broadcastState()
-    }
-
-    /// 停止计时（内部）
-    private func stopTimer() {
-        invalidateTimer()
-        status = .stopped
-        broadcastState()
-    }
-
-    /// 计时器每帧调用的方法
-    private func tick() {
-        guard endTime != nil else { return }
-
-        // 1. 更新剩余时间
-        updateTimeRemainingFromDate()
-
-        // 2. 检查是否结束
-        if timeRemaining <= 0 {
-            handleTimerFinished()
-            return
-        }
-
-        // 3. 检查声音触发点（区间检查防止错过）
-        checkSoundTriggers()
-
-        // 4. 更新上一帧时间记录
-        lastTickTimeRemaining = timeRemaining
-
-        // 5. 广播状态
-        broadcastState()
-    }
-
-    private func broadcastState() {
-        let statusStr: String
-        switch status {
-        case .running: statusStr = "running"
-        case .paused: statusStr = "paused"
-        case .stopped: statusStr = "stopped"
-        case .idle: statusStr = "idle"
-        }
-
-        // 构建当前状态标识
-        let currentStatusKey = "\(statusStr)_\(timeString)_\(progress)"
+    private func broadcastState(snapshot: TimerSnapshot) {
+        let statusStr = TimerMessageFactory.statusString(for: snapshot.status)
+        let currentStatusKey = "\(statusStr)_\(snapshot.timeString)_\(snapshot.progress)"
 
         // 只有状态数据变化时才继续
         guard currentStatusKey != lastBroadcastStatus else { return }
@@ -254,100 +125,16 @@ class WebTimerEngine: ObservableObject, TimerEngineProtocol {
         // 节流处理 (Throttling)：限制最高广播频率为 20Hz (0.05秒)
         let now = Date().timeIntervalSince1970
         let isStatusChanged = !lastBroadcastStatus.contains(statusStr)
+        
         // 如果是 running 状态，且状态本身没有发生切换（只是时间流逝），则应用节流
-        if status == .running && !isStatusChanged && (now - lastBroadcastTime) < 0.05 {
+        if snapshot.status == .running && !isStatusChanged && (now - lastBroadcastTime) < 0.05 {
             return
         }
 
         lastBroadcastStatus = currentStatusKey
         lastBroadcastTime = now
 
-        let json = """
-        {
-            "type": "update",
-            "timeString": "\(timeString)",
-            "progress": \(progress),
-            "status": "\(statusStr)"
-        }
-        """
+        let json = TimerMessageFactory.update(snapshot: snapshot)
         onBroadcast?(json)
-    }
-
-    /// 根据 endTime 和当前时间计算剩余毫秒数
-    private func updateTimeRemainingFromDate() {
-        guard let endTime = endTime else { return }
-
-        let remainingSeconds = endTime.timeIntervalSinceNow
-        let newTimeRemaining = max(0, Int(remainingSeconds * 1000))
-
-        if newTimeRemaining != timeRemaining {
-            if Thread.isMainThread {
-                self.timeRemaining = newTimeRemaining
-                self.updateProgress()
-                self.updateTimeString()
-            } else {
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-                    self.timeRemaining = newTimeRemaining
-                    self.updateProgress()
-                    self.updateTimeString()
-                }
-            }
-        }
-    }
-
-    /// 检查并在特定时间点触发音效
-    private func checkSoundTriggers() {
-        // 如果是自定义模式，跳过中间提示音
-        if isCustomTimer { return }
-
-        // 35秒触发点 (35000ms)
-        if lastTickTimeRemaining > 35000 && timeRemaining <= 35000 {
-            playSound(name: "Change")
-        }
-
-        // 25秒触发点 (25000ms)
-        if lastTickTimeRemaining > 25000 && timeRemaining <= 25000 {
-            playSound(name: "Change")
-        }
-    }
-
-    private func playSound(name: String) {
-        onPlaySound?(name)
-    }
-
-    /// 计时结束处理
-    private func handleTimerFinished() {
-        stopAndReset()
-
-        // 强制归零状态
-        timeRemaining = 0
-        updateProgress()
-        updateTimeString()
-        status = .stopped
-
-        // 播放结束音效
-        playSound(name: "Over")
-    }
-
-    /// 重置所有时间相关数据到初始状态
-    private func resetTimeData() {
-        timeRemaining = totalTime
-        lastTickTimeRemaining = totalTime
-        progress = 1.0
-        updateTimeString()
-    }
-
-    /// 更新进度条 (0.0 - 1.0)
-    private func updateProgress() {
-        progress = Double(timeRemaining) / Double(totalTime)
-    }
-
-    /// 更新时间字符串显示
-    private func updateTimeString() {
-        let seconds = Int(ceil(Double(timeRemaining) / 1000.0))
-        let m = seconds / 60
-        let s = seconds % 60
-        timeString = String(format: "%d:%02d", m, s)
     }
 }
