@@ -12,6 +12,7 @@ class WebSocketConnection: Identifiable {
     let id = UUID()
     private let connection: NWConnection
     var onClose: ((UUID) -> Void)?
+    var onMessage: ((String) -> Void)?
     
     init(connection: NWConnection) {
         self.connection = connection
@@ -78,9 +79,49 @@ class WebSocketConnection: Identifiable {
         // 检查 FIN 位和 opcode
         let opcode = firstByte & 0x0F
 
-        // 只处理控制帧
-        guard opcode == 0x08 || opcode == 0x09 || opcode == 0x0A else {
-            // 非控制帧，暂时忽略（因为服务器主要发送数据给客户端）
+        // 只处理控制帧和文本帧
+        guard opcode == 0x01 || opcode == 0x08 || opcode == 0x09 || opcode == 0x0A else {
+            // 非文本帧和非控制帧，暂时忽略
+            return
+        }
+
+        // 处理文本帧
+        if opcode == 0x01 {
+            var payloadStartIndex = 2
+            var payloadLength = Int(secondByte & 0x7F)
+            let isMasked = (secondByte & 0x80) != 0
+
+            if payloadLength == 126 {
+                guard data.count >= 4 else { return }
+                payloadLength = Int(data[2]) << 8 | Int(data[3])
+                payloadStartIndex = 4
+            } else if payloadLength == 127 {
+                guard data.count >= 10 else { return }
+                payloadLength = Int(data[6]) << 24 | Int(data[7]) << 16 | Int(data[8]) << 8 | Int(data[9])
+                payloadStartIndex = 10
+            }
+
+            var maskingKey: [UInt8] = []
+            if isMasked {
+                guard data.count >= payloadStartIndex + 4 else { return }
+                maskingKey = [data[payloadStartIndex], data[payloadStartIndex+1], data[payloadStartIndex+2], data[payloadStartIndex+3]]
+                payloadStartIndex += 4
+            }
+
+            guard data.count >= payloadStartIndex + payloadLength else { return }
+            var payload = data.subdata(in: payloadStartIndex..<(payloadStartIndex + payloadLength))
+
+            if isMasked {
+                for i in 0..<payload.count {
+                    payload[i] ^= maskingKey[i % 4]
+                }
+            }
+
+            if let messageString = String(data: payload, encoding: .utf8) {
+                DispatchQueue.main.async {
+                    self.onMessage?(messageString)
+                }
+            }
             return
         }
 

@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 import SwiftUI
+import WebRTC
 
 /// Web端远程控制管理器，负责协调Web端计时器引擎、网络服务和音频
 /// 与 PhoneRemoteControlManager 完全独立，拥有自己的 isMuted 状态
@@ -23,12 +24,20 @@ class WebRemoteControlManager: ObservableObject {
         self.networkService = networkService
         setupEngine()
         setupLanguageSync()
+        
+        // Setup WebRTC Delegate
+        WebRTCManager.shared.delegate = self
+        
+        // Listen for incoming WebSocket messages (Signaling)
+        networkService.onMessageReceived = { connection, msg in
+            WebRTCManager.shared.handleSignalingMessage(msg, from: connection)
+        }
     }
 
     private func setupEngine() {
-        // 配置广播回调
-        webTimerEngine.onBroadcast = { [weak self] jsonMessage in
-            self?.networkService.broadcast(message: jsonMessage)
+        // 配置广播回调，改为通过 WebRTC 发送
+        webTimerEngine.onBroadcast = { jsonMessage in
+            WebRTCManager.shared.sendData(jsonMessage)
         }
 
         // 配置音频播放回调
@@ -48,7 +57,7 @@ class WebRemoteControlManager: ObservableObject {
         isMuted.toggle()
 
         // 发送静音指令到 Web 端
-        networkService.broadcast(message: TimerMessageFactory.toggleMute(isMuted: isMuted))
+        WebRTCManager.shared.sendData(TimerMessageFactory.toggleMute(isMuted: isMuted))
     }
 
     private func handlePlaySound(name: String) {
@@ -56,7 +65,7 @@ class WebRemoteControlManager: ObservableObject {
         if isMuted { return }
 
         // 始终广播声音指令到 Web 端
-        networkService.broadcast(message: TimerMessageFactory.playSound(name: name))
+        WebRTCManager.shared.sendData(TimerMessageFactory.playSound(name: name))
 
         // 决定是否在手机本地播放声音
         let hasConnectedClients = networkService.connectedClientsCount > 0
@@ -101,9 +110,37 @@ class WebRemoteControlManager: ObservableObject {
     /// 同步当前语言到 Web 端
     func syncLanguage() {
         let lang = UserDefaults.standard.string(forKey: "appLanguage") ?? "en"
-        networkService.broadcast(message: TimerMessageFactory.language(lang: lang))
+        WebRTCManager.shared.sendData(TimerMessageFactory.language(lang: lang))
 
         // 同时同步静音状态
-        networkService.broadcast(message: TimerMessageFactory.toggleMute(isMuted: isMuted))
+        WebRTCManager.shared.sendData(TimerMessageFactory.toggleMute(isMuted: isMuted))
+    }
+}
+
+// MARK: - WebRTCManagerDelegate
+extension WebRemoteControlManager: WebRTCManagerDelegate {
+    func webRTCManager(_ manager: WebRTCManager, didOpenDataChannel channel: RTCDataChannel) {
+        print("WebRTC Data Channel Opened. Syncing initial state over UDP...")
+        
+        // 1. Language
+        let lang = UserDefaults.standard.string(forKey: "appLanguage") ?? "en"
+        manager.sendData(TimerMessageFactory.language(lang: lang))
+
+        // 2. Mute State
+        manager.sendData(TimerMessageFactory.toggleMute(isMuted: isMuted))
+
+        // 3. Timer State
+        let snapshot = TimerSnapshot(
+            timeRemaining: webTimerEngine.timeRemaining,
+            timeString: webTimerEngine.timeString,
+            progress: webTimerEngine.progress,
+            status: webTimerEngine.status
+        )
+        manager.sendData(TimerMessageFactory.update(snapshot: snapshot))
+    }
+    
+    func webRTCManager(_ manager: WebRTCManager, didReceiveMessage message: String) {
+        // Handle incoming data channel messages if needed (e.g. commands from Web to iOS)
+        print("Received from WebRTC: \(message)")
     }
 }

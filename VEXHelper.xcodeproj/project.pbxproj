@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		641E7A402FA7B5290046D5D6 /* WebRTC in Frameworks */ = {isa = PBXBuildFile; productRef = 641E7A3F2FA7B5290046D5D6 /* WebRTC */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		644AAA062F248A1D00BE0E48 /* VEXHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VEXHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				641E7A402FA7B5290046D5D6 /* WebRTC in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = VEXHelper;
 			packageProductDependencies = (
+				641E7A3F2FA7B5290046D5D6 /* WebRTC */,
 			);
 			productName = VEXHelper;
 			productReference = 644AAA062F248A1D00BE0E48 /* VEXHelper.app */;
@@ -95,6 +101,9 @@
 			);
 			mainGroup = 644AA9FD2F248A1D00BE0E48;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				641E7A3E2FA7B5290046D5D6 /* XCRemoteSwiftPackageReference "WebRTC" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 644AAA072F248A1D00BE0E48 /* Products */;
 			projectDirPath = "";
@@ -347,6 +356,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		641E7A3E2FA7B5290046D5D6 /* XCRemoteSwiftPackageReference "WebRTC" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/stasel/WebRTC";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 147.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		641E7A3F2FA7B5290046D5D6 /* WebRTC */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 641E7A3E2FA7B5290046D5D6 /* XCRemoteSwiftPackageReference "WebRTC" */;
+			productName = WebRTC;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 644AA9FE2F248A1D00BE0E48 /* Project object */;
 }

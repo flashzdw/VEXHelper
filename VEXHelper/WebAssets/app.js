@@ -4,6 +4,13 @@ let audioContext;
 let audioBuffers = {};
 const sounds = ['Start', 'Stop', 'Over', 'Change'];
 
+// WebRTC Variables
+let peerConnection;
+let dataChannel;
+const rtcConfig = {
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+};
+
 // Localization
 const i18n = {
     'en': {
@@ -110,13 +117,15 @@ function connect() {
     socket = new WebSocket(`${protocol}//${host}`);
     
     socket.onopen = () => {
-        console.log("Connected");
-        document.getElementById('status').innerText = i18n[currentLang]['ready'];
-        document.getElementById('status').style.color = "#30D158"; // Green
+        console.log("WebSocket Connected (Signaling)");
+        document.getElementById('status').innerText = "Signaling...";
+        document.getElementById('status').style.color = "#FF9F0A"; // Orange for signaling
         if (reconnectTimer) {
             clearTimeout(reconnectTimer);
             reconnectTimer = null;
         }
+        // Start WebRTC Handshake
+        startWebRTC();
     };
     
     socket.onclose = () => {
@@ -137,14 +146,93 @@ function connect() {
     socket.onmessage = (event) => {
         try {
             const msg = JSON.parse(event.data);
-            handleMessage(msg);
+            if (msg.type === 'sdp' || msg.type === 'ice') {
+                handleSignalingMessage(msg);
+            } else {
+                handleDataMessage(msg); // Fallback if data is sent over WS
+            }
         } catch (e) {
             console.error("Parse error", e);
         }
     };
 }
 
-function handleMessage(msg) {
+async function startWebRTC() {
+    if (peerConnection) peerConnection.close();
+    
+    peerConnection = new RTCPeerConnection(rtcConfig);
+    
+    // Create Data Channel for low-latency communication (UDP)
+    dataChannel = peerConnection.createDataChannel("timerControl", {
+        ordered: false, // 不保证顺序，丢包不重传，极大降低延迟
+        maxRetransmits: 0
+    });
+    
+    dataChannel.onopen = () => {
+        console.log("WebRTC Data Channel Opened!");
+        document.getElementById('status').innerText = i18n[currentLang]['ready'];
+        document.getElementById('status').style.color = "#30D158"; // Green
+    };
+    
+    dataChannel.onclose = () => {
+        console.log("WebRTC Data Channel Closed");
+        document.getElementById('status').innerText = i18n[currentLang]['disconnected'];
+        document.getElementById('status').style.color = "#FF453A";
+    };
+    
+    dataChannel.onmessage = (event) => {
+        try {
+            const msg = JSON.parse(event.data);
+            handleDataMessage(msg);
+        } catch(e) {
+            console.error("DataChannel Parse Error", e);
+        }
+    };
+
+    peerConnection.onicecandidate = (event) => {
+        if (event.candidate && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+                type: 'ice',
+                sdpMLineIndex: event.candidate.sdpMLineIndex,
+                sdpMid: event.candidate.sdpMid,
+                candidate: event.candidate.candidate
+            }));
+        }
+    };
+    
+    try {
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        socket.send(JSON.stringify({
+            type: 'sdp',
+            sdpType: offer.type,
+            sdp: offer.sdp
+        }));
+    } catch (e) {
+        console.error("WebRTC Offer Error", e);
+    }
+}
+
+async function handleSignalingMessage(msg) {
+    try {
+        if (msg.type === 'sdp' && msg.sdpType === 'answer') {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription({
+                type: msg.sdpType,
+                sdp: msg.sdp
+            }));
+        } else if (msg.type === 'ice') {
+            await peerConnection.addIceCandidate(new RTCIceCandidate({
+                sdpMLineIndex: msg.sdpMLineIndex,
+                sdpMid: msg.sdpMid,
+                candidate: msg.candidate
+            }));
+        }
+    } catch (e) {
+        console.error("WebRTC Signaling Error", e);
+    }
+}
+
+function handleDataMessage(msg) {
     if (msg.type === 'update') {
         // Update Time
         document.getElementById('timer').innerText = msg.timeString;

@@ -24,6 +24,7 @@ class LocalNetworkService: ObservableObject {
     
     // Callback for new connections to send initial state
     var onNewConnection: ((WebSocketConnection) -> Void)?
+    var onMessageReceived: ((WebSocketConnection, String) -> Void)?
     
     private init() {}
     
@@ -191,6 +192,10 @@ extension LocalNetworkService: HTTPConnectionDelegate {
         DispatchQueue.main.async {
             self.connectedWebSockets.append(connection)
             self.connectedClientsCount = self.connectedWebSockets.count
+            
+            connection.onMessage = { [weak self] msg in
+                self?.onMessageReceived?(connection, msg)
+            }
             
             // Notify listener to send initial state
             self.onNewConnection?(connection)
