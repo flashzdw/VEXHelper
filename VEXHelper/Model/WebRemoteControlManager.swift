@@ -143,4 +143,13 @@ extension WebRemoteControlManager: WebRTCManagerDelegate {
         // Handle incoming data channel messages if needed (e.g. commands from Web to iOS)
         print("Received from WebRTC: \(message)")
     }
+    
+    func webRTCManager(_ manager: WebRTCManager, didFailWithError error: Error) {
+        print("WebRTC Handshake failed. Falling back to clean state. Error: \(error.localizedDescription)")
+        // 断开当前的异常连接，等待客户端触发重连 (app.js 中的 reconnectTimer)
+        manager.closeConnection()
+        
+        // 也可以选择在这里通过 LocalNetworkService 广播一个 fallback 指令
+        // 但目前由于连接断开，Web 端的 socket.onclose 会自动处理并尝试重连
+    }
 }

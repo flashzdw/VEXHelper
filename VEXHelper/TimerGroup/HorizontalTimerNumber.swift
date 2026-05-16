@@ -16,8 +16,6 @@ struct HorizontalTimerNumber: View {
             .font(.system(size: 150, weight: .bold, design: .default)) // 更大的字体
             .foregroundColor(.white)
             .monospacedDigit()
-            .rotationEffect(.degrees(90)) // 旋转90度
-            .fixedSize() // 确保旋转后布局正确
             .frame(maxWidth: .infinity, maxHeight: .infinity) // 确保在父视图中居中
     }
 }
@@ -34,18 +32,24 @@ struct LandscapeTimerView<Engine: TimerEngineProtocol>: View {
     private let brightBlue = Color.blue
     private let darkGray = Color("AppDarkGray")
     
+    // 自适应圆角：取屏幕短边的 12.5% 以适配各类机型的物理圆角
+    private var adaptiveCornerRadius: CGFloat {
+        min(UIScreen.main.bounds.width, UIScreen.main.bounds.height) * 0.125
+    }
+    
     var body: some View {
         ZStack {
-            // 背景 RoundedRectangle (cornerRadius 40, lineWidth 22, color "darkGray", ignores safe area)
-            RoundedRectangle(cornerRadius: 50)
+            // 背景 RoundedRectangle (color "darkGray", ignores safe area)
+            RoundedRectangle(cornerRadius: adaptiveCornerRadius)
                 .stroke(brightBlue.opacity(0.3), lineWidth: 22)
                 .padding(14)
                 .ignoresSafeArea()
             
-            // 进度 RoundedRectangle (cornerRadius 50, lineWidth 22, trim, color .blue, ignores safe area)
-            RoundedRectangle(cornerRadius: 50)
+            // 进度 RoundedRectangle (trim, color .blue, ignores safe area)
+            ProgressRoundedRectangle(cornerRadius: adaptiveCornerRadius)
                 .trim(from: 0, to: CGFloat(timerEngine.progress))
                 .stroke(brightBlue, style: StrokeStyle(lineWidth: 25, lineCap: .round))
+                // 注意：使用自定义的 ProgressRoundedRectangle 后，不再需要先旋转翻转了，因为它本来就是从顶部居中逆时针绘制的
                 .padding(14)
                 .ignoresSafeArea()
                 .animation(.linear(duration: 0.1), value: timerEngine.progress)
@@ -53,14 +57,13 @@ struct LandscapeTimerView<Engine: TimerEngineProtocol>: View {
             // 倒计时数字
             HorizontalTimerNumber(timeString: timerEngine.timeString)
             
-            // 静音按钮 (旋转90度，位于逻辑左下角)
+            // 静音按钮 (位于左下角)
             VStack {
                 Spacer()
                 HStack {
                     muteButton(size: 30)
-                        .rotationEffect(.degrees(90))
-                        .padding(.bottom, 40)
-                        .padding(.leading, 40)
+                        .padding(.bottom, 20)
+                        .padding(.leading, 20)
                     Spacer()
                 }
             }

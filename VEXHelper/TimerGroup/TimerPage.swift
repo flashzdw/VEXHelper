@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct TimerPage<Engine: TimerEngineProtocol>: View {
     @ObservedObject var timerCenter: Engine
@@ -30,6 +31,11 @@ struct TimerPage<Engine: TimerEngineProtocol>: View {
         }
     }
     
+    // 自适应圆角：取屏幕短边的 12.5% 以适配各类机型的物理圆角
+    private var adaptiveCornerRadius: CGFloat {
+        min(UIScreen.main.bounds.width, UIScreen.main.bounds.height) * 0.125
+    }
+
     var body: some View {
         ZStack {
             // 背景色
@@ -49,6 +55,29 @@ struct TimerPage<Engine: TimerEngineProtocol>: View {
                 message: Text("There are no connected clients. Please go to the Connection tab to connect a web client first."),
                 dismissButton: .default(Text("OK"))
             )
+        }
+        .onChange(of: isFullscreen) { newValue in
+            if newValue {
+                AppDelegate.orientationLock = .landscape
+                if #available(iOS 16.0, *) {
+                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                        windowScene.requestGeometryUpdate(UIWindowScene.GeometryPreferences.iOS(interfaceOrientations: .landscape))
+                    }
+                } else {
+                    UIDevice.current.setValue(UIInterfaceOrientation.landscapeRight.rawValue, forKey: "orientation")
+                }
+                UIViewController.attemptRotationToDeviceOrientation()
+            } else {
+                AppDelegate.orientationLock = .portrait
+                if #available(iOS 16.0, *) {
+                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                        windowScene.requestGeometryUpdate(UIWindowScene.GeometryPreferences.iOS(interfaceOrientations: .portrait))
+                    }
+                } else {
+                    UIDevice.current.setValue(UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
+                }
+                UIViewController.attemptRotationToDeviceOrientation()
+            }
         }
     }
     
@@ -78,21 +107,23 @@ struct TimerPage<Engine: TimerEngineProtocol>: View {
                     
                     Spacer()
                     
-                    // 右上角：全屏按钮
-                    Button(action: {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            isFullscreen = true
+                    if sharedData.activeTimerMode == .phone {
+                        // 右上角：全屏按钮 (仅手机计时模式显示)
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isFullscreen = true
+                            }
+                        }) {
+                            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(10)
+                                .background(brightBlue)
+                                .clipShape(Circle())
                         }
-                    }) {
-                        Image(systemName: "arrow.up.left.and.arrow.down.right")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(10)
-                            .background(brightBlue)
-                            .clipShape(Circle())
+                        .padding(.top, 10) // 与全局返回按钮对齐
+                        .padding(.trailing, 20)
                     }
-                    .padding(.top, 10) // 与全局返回按钮对齐
-                    .padding(.trailing, 20)
                 }
                 
                 Spacer()
@@ -121,10 +152,9 @@ struct TimerPage<Engine: TimerEngineProtocol>: View {
         ZStack {
             LandscapeTimerView(timerEngine: timerCenter, sharedData: sharedData)
             
-            // 退出全屏按钮
+            // 退出全屏按钮 (左上角)
             VStack {
                 HStack {
-                    Spacer()
                     Button(action: {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             isFullscreen = false
@@ -135,64 +165,35 @@ struct TimerPage<Engine: TimerEngineProtocol>: View {
                             .foregroundColor(.white)
                             .padding(20)
                             .background(Color.black.opacity(0.5))
-                            .clipShape(CornerRadiusShape(radius: 35, corners: .bottomLeft))
-                            .rotationEffect(.degrees(180))
+                            .clipShape(CornerRadiusShape(radius: adaptiveCornerRadius, corners: [.topLeft, .bottomRight]))
                     }
-                }
-                .padding(.top, 28)
-                .padding(.trailing, 28)
-                
-                Spacer()
-                
-                // 横屏模式下的左上角切换按钮（位于屏幕左下角，视觉上旋转90度）
-                HStack {
-                    Button(action: {
-                        toggleTimerMode()
-                    }) {
-                        HStack {
-                            Image(systemName: sharedData.activeTimerMode == .phone ? "iphone" : "network")
-                            Text(sharedData.activeTimerMode == .phone ? LocalizedStringKey("Phone") : LocalizedStringKey("Remote"))
-                                .font(.system(size: 14, weight: .bold))
-                        }
-                        .foregroundColor(sharedData.activeTimerMode == .phone ? .white : .green)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(Color.white.opacity(0.15))
-                        .clipShape(Capsule())
-                        .rotationEffect(.degrees(90))
-                    }
-                    .padding(.bottom, 40)
-                    .padding(.leading, 20)
                     Spacer()
                 }
+                Spacer()
             }
             .ignoresSafeArea()
             
-            // 侧边控制按钮（对应竖屏的底部，旋转90度）
-            HStack {
-                VStack(spacing: 30) {
-                    Spacer()
+            // 底部控制按钮 (水平居中)
+            VStack {
+                Spacer()
+                HStack(spacing: 50) {
                     ForEach(TimerControlRules.actions(for: timerCenter.status), id: \.self) { action in
-                        controlButton(iconName: action.iconName, rotated: true, action: {
+                        controlButton(iconName: action.iconName, action: {
                             timerCenter.perform(action)
                         })
                     }
-                    Spacer()
                 }
-                .padding(.leading, 40)
-                
-                Spacer()
+                .padding(.bottom, 30)
             }
         }
     }
     
     // 辅助函数：创建统一风格的控制按钮
-    func controlButton(iconName: String, rotated: Bool = false, action: @escaping () -> Void) -> some View {
+    func controlButton(iconName: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: iconName)
                 .font(.system(size: 25, weight: .bold))
                 .foregroundColor(.white)
-                .rotationEffect(rotated ? .degrees(90) : .degrees(0))
                 .frame(width: 60, height: 60)
                 .background(brightBlue)
                 .clipShape(Circle())

@@ -4,6 +4,7 @@ import WebRTC
 protocol WebRTCManagerDelegate: AnyObject {
     func webRTCManager(_ manager: WebRTCManager, didOpenDataChannel channel: RTCDataChannel)
     func webRTCManager(_ manager: WebRTCManager, didReceiveMessage message: String)
+    func webRTCManager(_ manager: WebRTCManager, didFailWithError error: Error)
 }
 
 class WebRTCManager: NSObject {
@@ -45,27 +46,43 @@ class WebRTCManager: NSObject {
                 createPeerConnection()
             }
             
-            peerConnection?.setRemoteDescription(sessionDescription, completionHandler: { error in
+            peerConnection?.setRemoteDescription(sessionDescription, completionHandler: { [weak self] error in
+                guard let self = self else { return }
                 if let error = error {
                     print("WebRTC Error: Failed to set remote description - \(error.localizedDescription)")
+                    DispatchQueue.main.async {
+                        self.delegate?.webRTCManager(self, didFailWithError: error)
+                    }
                     return
                 }
                 
                 if sdpType == .offer {
-                    self.peerConnection?.answer(for: RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil), completionHandler: { answerDesc, answerError in
+                    self.peerConnection?.answer(for: RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil), completionHandler: { [weak self] answerDesc, answerError in
+                        guard let self = self else { return }
                         if let answerError = answerError {
                             print("WebRTC Error: Failed to create answer - \(answerError.localizedDescription)")
+                            DispatchQueue.main.async {
+                                self.delegate?.webRTCManager(self, didFailWithError: answerError)
+                            }
                             return
                         }
                         
                         guard let answer = answerDesc else {
-                            print("WebRTC Error: Answer description is nil")
+                            let error = NSError(domain: "WebRTCManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Answer description is nil"])
+                            print("WebRTC Error: \(error.localizedDescription)")
+                            DispatchQueue.main.async {
+                                self.delegate?.webRTCManager(self, didFailWithError: error)
+                            }
                             return
                         }
                         
-                        self.peerConnection?.setLocalDescription(answer, completionHandler: { localError in
+                        self.peerConnection?.setLocalDescription(answer, completionHandler: { [weak self] localError in
+                            guard let self = self else { return }
                             if let localError = localError {
                                 print("WebRTC Error: Failed to set local description - \(localError.localizedDescription)")
+                                DispatchQueue.main.async {
+                                    self.delegate?.webRTCManager(self, didFailWithError: localError)
+                                }
                                 return
                             }
                             

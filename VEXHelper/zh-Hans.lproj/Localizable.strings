@@ -65,3 +65,6 @@
 "There are no connected clients. Please go to the Connection tab to connect a web client first." = "当前没有连接的网页客户端。请先前往“连接”菜单扫描二维码进行连接。";
 "Web client disconnected." = "网页客户端已断开连接。";
 "Server restarted." = "服务器已重启。";
+"Phone Timer Mode" = "手机计时模式";
+"Remote Timer Mode" = "远程计时模式";
+"Remote Audio Settings" = "远程音频设置";
